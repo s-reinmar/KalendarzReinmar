@@ -1,17 +1,5 @@
 package com.example.feature.map.leaflet
 
-import android.annotation.SuppressLint
-import android.content.Context
-import android.graphics.Color as AndroidColor
-import android.os.Build
-import android.view.MotionEvent
-import android.view.ViewGroup
-import android.webkit.RenderProcessGoneDetail
-import android.webkit.WebChromeClient
-import android.webkit.WebResourceRequest
-import android.webkit.WebSettings
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,49 +37,9 @@ import com.example.domain.model.GeoPoint
 import kotlinx.coroutines.delay
 
 private const val DEFAULT_ZOOM = 6
-private const val MAP_BASE_URL = "https://kalendarzreinmar.app/"
-private const val JS_BRIDGE_NAME = "ReinmarMapBridge"
 private const val MAX_AUTO_RELOADS = 2
-private const val RENDERER_RECOVERY_DELAY_MS = 400L
+private const val RENDERER_RECOVERY_BASE_DELAY_MS = 600L
 
-private class WebViewSession(
-    val webView: WebView,
-    val bridge: LeafletBridge,
-) {
-    private var destroyed: Boolean = false
-
-    val isActive: Boolean
-        get() = !destroyed
-
-    fun pauseIfActive() {
-        if (!destroyed) runCatching { webView.onPause() }
-    }
-
-    fun resumeIfActive() {
-        if (!destroyed) runCatching { webView.onResume() }
-    }
-
-    fun destroyOnce(rendererAlreadyGone: Boolean) {
-        if (destroyed) return
-        destroyed = true
-        bridge.deactivate()
-        runCatching {
-            webView.webViewClient = WebViewClient()
-            webView.webChromeClient = null
-            webView.setOnTouchListener(null)
-            webView.removeJavascriptInterface(JS_BRIDGE_NAME)
-            if (!rendererAlreadyGone) {
-                webView.stopLoading()
-                webView.onPause()
-            }
-            (webView.parent as? ViewGroup)?.removeView(webView)
-            webView.removeAllViews()
-            webView.destroy()
-        }
-    }
-}
-
-@SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
 @Composable
 fun LeafletMapView(
     modifier: Modifier = Modifier,
@@ -109,7 +57,7 @@ fun LeafletMapView(
     val latestOnMapTap by rememberUpdatedState(onMapTap)
     val latestOnMarkerTap by rememberUpdatedState(onMarkerTap)
     val lifecycleOwner = LocalLifecycleOwner.current
-    var activeSession by remember { mutableStateOf<WebViewSession?>(null) }
+    var activeSession by remember { mutableStateOf<LeafletWebViewSession?>(null) }
     var sessionKey by remember { mutableIntStateOf(0) }
     var autoReloadCount by remember { mutableIntStateOf(0) }
     var recoveringRenderer by remember { mutableStateOf(false) }
@@ -124,9 +72,9 @@ fun LeafletMapView(
         )
     }
 
-    LaunchedEffect(recoveringRenderer) {
+    LaunchedEffect(recoveringRenderer, autoReloadCount) {
         if (recoveringRenderer) {
-            delay(RENDERER_RECOVERY_DELAY_MS)
+            delay(RENDERER_RECOVERY_BASE_DELAY_MS * autoReloadCount.coerceAtLeast(1))
             sessionKey++
             recoveringRenderer = false
         }
@@ -180,10 +128,11 @@ fun LeafletMapView(
     key(sessionKey) {
         AndroidView(
             factory = { ctx ->
-                val createdSession = createLeafletSession(
+                val createdSession = LeafletWebViewSession.create(
                     context = ctx,
                     html = html,
                     controller = controller,
+                    onReady = { autoReloadCount = 0 },
                     onMapTap = { latestOnMapTap(it) },
                     onMarkerTap = { latestOnMarkerTap(it) },
                     onRendererGone = { goneSession ->
@@ -266,87 +215,4 @@ private fun MapCrashFallback(
             }
         }
     }
-}
-
-@SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
-private fun createLeafletSession(
-    context: Context,
-    html: String,
-    controller: LeafletMapController,
-    onMapTap: (GeoPoint) -> Unit,
-    onMarkerTap: (EventId) -> Unit,
-    onRendererGone: (WebViewSession) -> Unit,
-): WebViewSession {
-    val webView = WebView(context)
-    val bridge = LeafletBridge(
-        onReady = { controller.onMapReady(webView) },
-        onMapTap = onMapTap,
-        onMarkerTap = onMarkerTap,
-    )
-    val session = WebViewSession(webView = webView, bridge = bridge)
-
-    webView.apply {
-        layoutParams = ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.MATCH_PARENT,
-        )
-        setBackgroundColor(AndroidColor.parseColor("#EFECE4"))
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false)
-        }
-        configureLeafletSettings(settings)
-        webChromeClient = WebChromeClient()
-        controller.attach(this)
-        webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(
-                view: WebView?,
-                request: WebResourceRequest?,
-            ): Boolean = true
-
-            override fun onRenderProcessGone(
-                view: WebView?,
-                detail: RenderProcessGoneDetail?,
-            ): Boolean {
-                if (session.isActive) {
-                    onRendererGone(session)
-                }
-                return true
-            }
-        }
-        setOnTouchListener { view, event ->
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
-                    view.parent?.requestDisallowInterceptTouchEvent(true)
-                }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    view.parent?.requestDisallowInterceptTouchEvent(false)
-                }
-            }
-            false
-        }
-        addJavascriptInterface(bridge, JS_BRIDGE_NAME)
-        loadDataWithBaseURL(MAP_BASE_URL, html, "text/html", "UTF-8", null)
-    }
-
-    return session
-}
-
-@SuppressLint("SetJavaScriptEnabled")
-private fun configureLeafletSettings(settings: WebSettings) {
-    settings.javaScriptEnabled = true
-    settings.domStorageEnabled = true
-    settings.loadsImagesAutomatically = true
-    settings.blockNetworkImage = false
-    settings.blockNetworkLoads = false
-    settings.useWideViewPort = true
-    settings.loadWithOverviewMode = true
-    settings.cacheMode = WebSettings.LOAD_DEFAULT
-    settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
-    settings.allowFileAccess = false
-    settings.allowContentAccess = false
-    settings.databaseEnabled = false
-    val sanitizedUa = settings.userAgentString
-        .replace("; wv)", ")")
-        .replace("; wv;", ";")
-    settings.userAgentString = "$sanitizedUa KalendarzReinmar/1.0"
 }

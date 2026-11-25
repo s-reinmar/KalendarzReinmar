@@ -100,6 +100,7 @@ class TransferController(
                             id = NoteId.UNASSIGNED,
                             title = item.title,
                             content = item.content,
+                            richSpans = item.richSpans,
                         )
                     }
                 )
@@ -171,8 +172,16 @@ class TransferController(
             }
             insertedEvents.filter { it.hasReminder }.forEach(reminderPort::schedule)
 
-            val insertedNotesCount = if (missingNotes.isNotEmpty()) {
-                noteRepository.addNotes(missingNotes)
+            val allEventsByTitle = (existingEvents + insertedEvents).associateBy { it.title }
+            val linkedNotes = missingNotes.map { note ->
+                val attachedIds = demoDataFactory
+                    .attachedEventTitlesForDemoNote(note.title)
+                    .mapNotNull { title -> allEventsByTitle[title]?.id }
+                note.copy(attachedEventIds = attachedIds)
+            }
+
+            val insertedNotesCount = if (linkedNotes.isNotEmpty()) {
+                noteRepository.addNotes(linkedNotes)
             } else {
                 0
             }

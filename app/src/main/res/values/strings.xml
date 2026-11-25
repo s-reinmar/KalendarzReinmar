@@ -213,4 +213,52 @@
 
     <string name="detail_description_label">Opis</string>
     <string name="cd_close_create_menu">Zamknij menu dodawania</string>
+
+    <!-- Rich text note editor & calendar event attachments -->
+    <string name="note_editor_placeholder">Zacznij pisać notatkę… Użyj paska poniżej, aby dodać nagłówki, listy, wyróżnienia lub indeksy.</string>
+    <string name="note_editor_close_cd">Zamknij edytor notatki</string>
+    <string name="note_editor_attach_events_cd">Podepnij wydarzenia z kalendarza</string>
+    <string name="note_editor_format_bold_cd">Pogrubienie</string>
+    <string name="note_editor_format_italic_cd">Kursywa</string>
+    <string name="note_editor_format_underline_cd">Podkreślenie</string>
+    <string name="note_editor_format_strikethrough_cd">Przekreślenie</string>
+    <string name="note_editor_format_superscript_cd">Indeks górny</string>
+    <string name="note_editor_format_subscript_cd">Indeks dolny</string>
+    <string name="note_editor_format_clear">Wyczyść styl</string>
+    <string name="note_editor_format_clear_cd">Wyczyść formatowanie tekstu</string>
+
+    <string name="note_size_h1">H1</string>
+    <string name="note_size_h2">H2</string>
+    <string name="note_size_h3">H3</string>
+    <string name="note_size_body">Zwykły</string>
+    <string name="note_size_small">Mały</string>
+    <string name="note_size_h1_cd">Nagłówek 1 (największy)</string>
+    <string name="note_size_h2_cd">Nagłówek 2 (średni)</string>
+    <string name="note_size_h3_cd">Nagłówek 3 (mniejszy)</string>
+    <string name="note_size_body_cd">Tekst zwykły</string>
+    <string name="note_size_small_cd">Tekst mały</string>
+
+    <string name="note_list_bullet">Punktowa</string>
+    <string name="note_list_numbered">Liczbowa</string>
+    <string name="note_list_checklist">Zadania</string>
+    <string name="note_list_lettered">Literowa</string>
+    <string name="note_list_dash">Myślnik</string>
+    <string name="note_list_bullet_cd">Lista punktowa</string>
+    <string name="note_list_numbered_cd">Lista liczbowa</string>
+    <string name="note_list_checklist_cd">Lista zadań z polami wyboru</string>
+    <string name="note_list_lettered_cd">Lista literowa</string>
+    <string name="note_list_dash_cd">Lista z myślnikami</string>
+
+    <string name="note_attachments_section_title">Załączniki z kalendarza</string>
+    <string name="note_attachments_section_count">Załączniki z kalendarza (%1$d)</string>
+    <string name="note_attachments_add_action">Podepnij wydarzenie</string>
+    <string name="note_attachments_empty_hint">Brak podpiętych wydarzeń. Możesz powiązać notatkę z wpisami z kalendarza.</string>
+    <string name="note_attachments_picker_title">Podepnij wydarzenia z kalendarza</string>
+    <string name="note_attachments_picker_search">Szukaj po tytule lub dacie…</string>
+    <string name="note_attachments_picker_empty">Brak wydarzeń w kalendarzu do podpięcia.</string>
+    <string name="note_attachments_picker_no_matches">Brak wydarzeń pasujących do wyszukiwania.</string>
+    <string name="note_attachments_picker_done">Gotowe (%1$d)</string>
+    <string name="note_attachment_remove_cd">Odepnij wydarzenie od notatki</string>
+    <string name="note_attachment_open_cd">Otwórz szczegóły wydarzenia %1$s</string>
+    <string name="note_editor_active_format_prefix">Aktywny styl: %1$s</string>
 </resources>

@@ -3,9 +3,11 @@ package com.example.data.local
 import com.example.data.NoteDao
 import com.example.data.NoteEntity
 import com.example.domain.model.Note
+import com.example.domain.model.NoteDraft
 import com.example.domain.model.NoteId
 import com.example.domain.port.ClockProvider
 import com.example.domain.port.NoteRepository
+import com.example.domain.service.NoteRichDocumentCodec
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -17,27 +19,29 @@ class RoomNoteRepository(
     override fun observeNotes(): Flow<List<Note>> =
         noteDao.getAllNotes().map { entities -> entities.map(NoteMapper::toDomain) }
 
-    override suspend fun addNote(title: String, content: String): Boolean {
-        val trimmedContent = content.trim()
-        if (trimmedContent.isEmpty()) return false
+    override suspend fun addNote(draft: NoteDraft): Boolean {
+        val clean = draft.sanitized() ?: return false
         noteDao.insertNote(
             NoteEntity(
-                title = title.trim(),
-                content = trimmedContent,
+                title = clean.title,
+                content = clean.document.text,
+                richSpans = NoteRichDocumentCodec.encodeSpans(clean.document.spans),
+                attachedEventIds = NoteRichDocumentCodec.encodeAttachedEventIds(clean.attachedEventIds),
                 createdAt = clock.nowMillis(),
             )
         )
         return true
     }
 
-    override suspend fun updateNote(note: Note, title: String, content: String): Boolean {
-        val trimmedContent = content.trim()
-        if (trimmedContent.isEmpty()) return false
+    override suspend fun updateNote(note: Note, draft: NoteDraft): Boolean {
+        val clean = draft.sanitized() ?: return false
         noteDao.updateNote(
             NoteMapper.toEntity(
                 note.copy(
-                    title = title.trim(),
-                    content = trimmedContent,
+                    title = clean.title,
+                    content = clean.document.text,
+                    richSpans = clean.document.spans,
+                    attachedEventIds = clean.attachedEventIds,
                 )
             )
         )
@@ -50,15 +54,17 @@ class RoomNoteRepository(
 
     override suspend fun addNotes(notes: List<Note>): Int {
         val valid = notes.mapNotNull { note ->
-            val trimmedContent = note.content.trim()
-            if (trimmedContent.isEmpty()) {
+            val cleanDoc = note.document.trimmed()
+            if (cleanDoc.isBlank) {
                 null
             } else {
                 val createdAt = if (note.createdAtMillis > 0L) note.createdAtMillis else clock.nowMillis()
                 NoteEntity(
                     id = 0L,
                     title = note.title.trim(),
-                    content = trimmedContent,
+                    content = cleanDoc.text,
+                    richSpans = NoteRichDocumentCodec.encodeSpans(cleanDoc.spans),
+                    attachedEventIds = NoteRichDocumentCodec.encodeAttachedEventIds(note.attachedEventIds),
                     createdAt = createdAt,
                 )
             }

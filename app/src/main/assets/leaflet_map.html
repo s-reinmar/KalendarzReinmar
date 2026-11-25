@@ -174,10 +174,11 @@
       function initMap() {
         hideStatus();
 
+        var disposed = false;
         var map = L.map('map', {
           zoomControl: true,
           attributionControl: true,
-          preferCanvas: false,
+          preferCanvas: true,
           fadeAnimation: false,
           zoomAnimation: false,
           markerZoomAnimation: false
@@ -256,6 +257,7 @@
 
         window.ReinmarMap = {
           setMarkers: function(items, shouldFit) {
+            if (disposed) return;
             eventMarkerLayer.clearLayers();
             markerMap = {};
             if (!Array.isArray(items)) return;
@@ -277,26 +279,31 @@
             }
           },
           setDraftPin: function(lat, lng, panTo, zoom) {
+            if (disposed) return;
             attachDraftMarker(lat, lng);
             if (panTo) {
               map.setView([lat, lng], zoom || 14);
             }
           },
           dropPinAtCenter: function() {
+            if (disposed) return;
             var center = map.getCenter();
             attachDraftMarker(center.lat, center.lng);
             notifyPicked(center.lat, center.lng);
           },
           clearDraftPin: function() {
+            if (disposed) return;
             if (draftMarker) {
               map.removeLayer(draftMarker);
               draftMarker = null;
             }
           },
           focusLocation: function(lat, lng, zoom) {
+            if (disposed) return;
             map.setView([lat, lng], zoom || 14);
           },
           setUserLocation: function(lat, lng, zoom) {
+            if (disposed) return;
             if (userLocationHalo) {
               userLocationHalo.setLatLng([lat, lng]);
             } else {
@@ -326,6 +333,7 @@
             map.setView([lat, lng], zoom || 15);
           },
           focusEvent: function(eventId) {
+            if (disposed) return;
             var marker = markerMap[String(eventId)];
             if (marker) {
               map.setView(marker.getLatLng(), 15);
@@ -333,12 +341,32 @@
             }
           },
           fitAllMarkers: function() {
+            if (disposed) return;
             fitAll();
+          },
+          dispose: function() {
+            if (disposed) return;
+            disposed = true;
+            if (resizeTimer) {
+              clearTimeout(resizeTimer);
+              resizeTimer = null;
+            }
+            window.removeEventListener('resize', refreshSize);
+            if (resizeObserver) {
+              resizeObserver.disconnect();
+              resizeObserver = null;
+            }
+            try {
+              eventMarkerLayer.clearLayers();
+              map.off();
+              map.remove();
+            } catch (_e) {}
           }
         };
 
         if (ENABLE_TAP) {
           map.on('click', function(e) {
+            if (disposed) return;
             var lat = e.latlng.lat;
             var lng = e.latlng.lng;
             attachDraftMarker(lat, lng);
@@ -349,9 +377,10 @@
         var resizeTimer = null;
         var resizeObserver = null;
         function refreshSize() {
+          if (disposed) return;
           if (resizeTimer) clearTimeout(resizeTimer);
           resizeTimer = setTimeout(function() {
-            if (!hasValidSize()) return;
+            if (disposed || !hasValidSize()) return;
             map.invalidateSize({ animate: false, pan: false });
             if (pendingFitAll) {
               fitAll();
@@ -367,11 +396,8 @@
           }
         }
         window.addEventListener('pagehide', function() {
-          if (resizeTimer) clearTimeout(resizeTimer);
-          window.removeEventListener('resize', refreshSize);
-          if (resizeObserver) {
-            resizeObserver.disconnect();
-            resizeObserver = null;
+          if (window.ReinmarMap && typeof window.ReinmarMap.dispose === 'function') {
+            window.ReinmarMap.dispose();
           }
         });
         setTimeout(refreshSize, 150);

@@ -11,6 +11,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.R
+import com.example.domain.model.CalendarEvent
+import com.example.domain.model.EventId
 import com.example.domain.model.Note
 import com.example.ui.components.EmptySectionCard
 import com.example.ui.theme.AppIcons
@@ -18,8 +20,10 @@ import com.example.ui.theme.AppIcons
 @Composable
 fun NotesScreen(
     notes: List<Note>,
+    eventsById: Map<EventId, CalendarEvent>,
     onEditClick: (Note) -> Unit,
     onDeleteClick: (Note) -> Unit,
+    onOpenAttachedEvent: (EventId) -> Unit,
     onLoadDemoData: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -47,10 +51,13 @@ fun NotesScreen(
                 items = notes,
                 key = { it.id.value },
             ) { note ->
+                val attachedEvents = note.attachedEventIds.mapNotNull { eventsById[it] }
                 NoteItemCard(
                     note = note,
+                    attachedEvents = attachedEvents,
                     onEditClick = { onEditClick(note) },
                     onDeleteClick = { onDeleteClick(note) },
+                    onOpenAttachedEvent = onOpenAttachedEvent,
                 )
             }
         }

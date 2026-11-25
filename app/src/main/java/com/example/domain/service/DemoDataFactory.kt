@@ -10,6 +10,10 @@ import com.example.domain.model.EventTypeDetails
 import com.example.domain.model.GeoPoint
 import com.example.domain.model.Note
 import com.example.domain.model.NoteId
+import com.example.domain.model.NoteRichSpan
+import com.example.domain.model.NoteScriptStyle
+import com.example.domain.model.NoteTextFormat
+import com.example.domain.model.NoteTextSize
 import com.example.domain.model.ReminderTime
 import com.example.domain.model.TaskPriority
 import com.example.domain.model.TimeOfDay
@@ -148,28 +152,55 @@ class DemoDataFactory(
             ),
         )
 
+        val demoPresentationContent = "Agenda spotkania\n" +
+            "1. Pokazać widok miesiąca, kolorowe kropki i filtrowanie typów.\n" +
+            "2. Przejść na zakładkę Mapa i kliknąć pinezkę wydarzenia.\n" +
+            "3. Wyeksportować dane do pliku .ics lub .csv.\n" +
+            "Wersja robocza: v2"
+        val demoSolidContent = "Kluczowe zasady\n" +
+            "• Każda funkcja ma własny kontroler MVC i testy jednostkowe.\n" +
+            "• Zależności przechodzą przez interfejsy portów (DIP).\n" +
+            "Wzór złożoności: O(n2) → redukcja do H2O prostoty."
+        val demoChecklistContent = "Przed publikacją\n" +
+            "☑ Zweryfikować uprawnienia powiadomień i GPS\n" +
+            "☐ Sprawdzić działanie trybu ciemnego\n" +
+            "☐ Przetestować import pliku CSV ze średnikami"
+
         val notes = listOf(
             Note(
                 id = NoteId.UNASSIGNED,
                 title = "Scenariusz prezentacji dema",
-                content = "1. Pokazać widok miesiąca, kolorowe kropki i filtrowanie typów.\n" +
-                    "2. Przejść na zakładkę Mapa i kliknąć pinezkę wydarzenia.\n" +
-                    "3. Wyeksportować wydarzenia do pliku .ics lub .csv.",
+                content = demoPresentationContent,
+                richSpans = listOfNotNull(
+                    spanFor(demoPresentationContent, "Agenda spotkania", NoteTextFormat(size = NoteTextSize.HEADING_2, bold = true)),
+                    spanFor(demoPresentationContent, "kolorowe kropki", NoteTextFormat(bold = true)),
+                    spanFor(demoPresentationContent, "zakładkę Mapa", NoteTextFormat(italic = true, underline = true)),
+                    spanFor(demoPresentationContent, "Wersja robocza:", NoteTextFormat(size = NoteTextSize.SMALL)),
+                    spanFor(demoPresentationContent, "2", NoteTextFormat(size = NoteTextSize.SMALL, script = NoteScriptStyle.SUPERSCRIPT), fromIndex = demoPresentationContent.indexOf("v2")),
+                ),
                 createdAtMillis = now + 30L,
             ),
             Note(
                 id = NoteId.UNASSIGNED,
                 title = "Założenia architektury SOLID",
-                content = "Każda funkcja (Kalendarz, Mapa, Notatki, Transfer) ma własny kontroler MVC, " +
-                    "interfejsy portów oraz testy jednostkowe bez zależności od Android Context.",
+                content = demoSolidContent,
+                richSpans = listOfNotNull(
+                    spanFor(demoSolidContent, "Kluczowe zasady", NoteTextFormat(size = NoteTextSize.HEADING_3, bold = true)),
+                    spanFor(demoSolidContent, "kontroler MVC", NoteTextFormat(bold = true)),
+                    spanFor(demoSolidContent, "interfejsy portów", NoteTextFormat(underline = true)),
+                    spanFor(demoSolidContent, "2", NoteTextFormat(script = NoteScriptStyle.SUPERSCRIPT), fromIndex = demoSolidContent.indexOf("O(n2)")),
+                    spanFor(demoSolidContent, "2", NoteTextFormat(script = NoteScriptStyle.SUBSCRIPT), fromIndex = demoSolidContent.indexOf("H2O")),
+                ),
                 createdAtMillis = now + 20L,
             ),
             Note(
                 id = NoteId.UNASSIGNED,
                 title = "Lista kontrolna przed wydaniem",
-                content = "- Zweryfikować uprawnienia powiadomień i GPS\n" +
-                    "- Sprawdzić działanie trybu ciemnego\n" +
-                    "- Przetestować import polskiego pliku CSV ze średnikami",
+                content = demoChecklistContent,
+                richSpans = listOfNotNull(
+                    spanFor(demoChecklistContent, "Przed publikacją", NoteTextFormat(size = NoteTextSize.HEADING_3, bold = true)),
+                    spanFor(demoChecklistContent, "trybu ciemnego", NoteTextFormat(italic = true)),
+                ),
                 createdAtMillis = now + 10L,
             ),
         )
@@ -177,9 +208,23 @@ class DemoDataFactory(
         return DemoDataset(events = events, notes = notes)
     }
 
+    fun attachedEventTitlesForDemoNote(noteTitle: String): List<String> =
+        DEMO_NOTE_ATTACHMENT_TITLES[noteTitle].orEmpty()
+
     fun isDemoEvent(event: CalendarEvent): Boolean = event.title in DEMO_EVENT_TITLES
 
     fun isDemoNote(note: Note): Boolean = note.title in DEMO_NOTE_TITLES
+
+    private fun spanFor(
+        text: String,
+        target: String,
+        format: NoteTextFormat,
+        fromIndex: Int = 0,
+    ): NoteRichSpan? {
+        val start = text.indexOf(target, startIndex = fromIndex.coerceAtLeast(0))
+        if (start < 0) return null
+        return NoteRichSpan(start = start, end = start + target.length, format = format)
+    }
 
     companion object {
         private val DEMO_EVENT_TITLES = setOf(
@@ -194,6 +239,14 @@ class DemoDataFactory(
             "Scenariusz prezentacji dema",
             "Założenia architektury SOLID",
             "Lista kontrolna przed wydaniem",
+        )
+
+        private val DEMO_NOTE_ATTACHMENT_TITLES = mapOf(
+            "Scenariusz prezentacji dema" to listOf("Prezentacja dema architektury MVC"),
+            "Lista kontrolna przed wydaniem" to listOf(
+                "Przegląd sprintu i testy odbiorcze",
+                "Wyjazd służbowy — Konferencja Kotlin",
+            ),
         )
     }
 }

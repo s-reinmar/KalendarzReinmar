@@ -14,6 +14,7 @@ data class ImportedEvent(
 data class ImportedNote(
     val title: String,
     val content: String,
+    val richSpans: List<NoteRichSpan> = emptyList(),
 )
 
 data class CsvImportResult(

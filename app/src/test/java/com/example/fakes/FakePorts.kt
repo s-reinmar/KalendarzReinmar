@@ -9,6 +9,7 @@ import com.example.domain.model.EventLocation
 import com.example.domain.model.GeoPoint
 import com.example.domain.model.GeocodingResult
 import com.example.domain.model.Note
+import com.example.domain.model.NoteDraft
 import com.example.domain.model.NoteId
 import com.example.domain.model.ReminderTime
 import com.example.domain.port.ClockProvider
@@ -138,23 +139,28 @@ class FakeNoteRepository : NoteRepository {
 
     override fun observeNotes(): Flow<List<Note>> = notesFlow.asStateFlow()
 
-    override suspend fun addNote(title: String, content: String): Boolean {
-        val trimmedContent = content.trim()
-        if (trimmedContent.isEmpty()) return false
+    override suspend fun addNote(draft: NoteDraft): Boolean {
+        val clean = draft.sanitized() ?: return false
         val note = Note(
             id = NoteId(nextId++),
-            title = title.trim(),
-            content = trimmedContent,
+            title = clean.title,
+            content = clean.document.text,
+            richSpans = clean.document.spans,
+            attachedEventIds = clean.attachedEventIds,
             createdAtMillis = nextId * 1000L,
         )
         notesFlow.update { listOf(note) + it }
         return true
     }
 
-    override suspend fun updateNote(note: Note, title: String, content: String): Boolean {
-        val trimmedContent = content.trim()
-        if (trimmedContent.isEmpty()) return false
-        val updated = note.copy(title = title.trim(), content = trimmedContent)
+    override suspend fun updateNote(note: Note, draft: NoteDraft): Boolean {
+        val clean = draft.sanitized() ?: return false
+        val updated = note.copy(
+            title = clean.title,
+            content = clean.document.text,
+            richSpans = clean.document.spans,
+            attachedEventIds = clean.attachedEventIds,
+        )
         notesFlow.update { list -> list.map { if (it.id == note.id) updated else it } }
         return true
     }
@@ -165,8 +171,18 @@ class FakeNoteRepository : NoteRepository {
 
     override suspend fun addNotes(notes: List<Note>): Int {
         val valid = notes.mapNotNull { note ->
-            val trimmed = note.content.trim()
-            if (trimmed.isEmpty()) null else note.copy(id = NoteId(nextId++), title = note.title.trim(), content = trimmed)
+            val cleanDoc = note.document.trimmed()
+            if (cleanDoc.isBlank) {
+                null
+            } else {
+                note.copy(
+                    id = NoteId(nextId++),
+                    title = note.title.trim(),
+                    content = cleanDoc.text,
+                    richSpans = cleanDoc.spans,
+                    attachedEventIds = note.attachedEventIds.filter { it.isValid }.distinct(),
+                )
+            }
         }
         if (valid.isNotEmpty()) {
             notesFlow.update { valid + it }

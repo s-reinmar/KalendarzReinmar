@@ -57,6 +57,7 @@ class AppContainer(appContext: Context) {
 
     fun notesViewModelFactory(): ViewModelProvider.Factory = NotesViewModel.factory(
         noteRepository = noteRepository,
+        eventRepository = eventRepository,
     )
 
     fun transferViewModelFactory(): ViewModelProvider.Factory = TransferViewModel.factory(

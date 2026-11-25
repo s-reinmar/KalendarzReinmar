@@ -157,8 +157,9 @@ fun AppShellView(
         shellController.navigateBackToCalendar()
     }
 
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val useNavigationRail = maxWidth >= 600.dp
+    Box(modifier = Modifier.fillMaxSize()) {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val useNavigationRail = maxWidth >= 600.dp
 
         Row(modifier = Modifier.fillMaxSize()) {
             if (useNavigationRail) {
@@ -309,14 +310,16 @@ fun AppShellView(
                                     onShowMessage = { message ->
                                         coroutineScope.launch { snackbarHostState.showSnackbar(message) }
                                     },
-                                    isPaused = calendarState.hasOpenDialog || isCreateMenuExpanded,
+                                    isPaused = calendarState.hasOpenDialog,
                                 )
                             }
                             AppTab.NOTES -> {
                                 NotesScreen(
                                     notes = notesState.notes,
+                                    eventsById = notesState.eventsById,
                                     onEditClick = notesController::openEditNote,
                                     onDeleteClick = notesController::requestDeleteNote,
+                                    onOpenAttachedEvent = calendarController::openEventDetails,
                                     onLoadDemoData = transferController::loadDemoData,
                                 )
                             }
@@ -332,18 +335,20 @@ fun AppShellView(
         }
     }
 
-    CalendarDialogHost(
-        uiState = calendarState,
-        todayDay = container.clockProvider.today(),
-        controller = calendarController,
-        geocodingService = container.geocodingService,
-        locationProvider = container.deviceLocationProvider,
-        onEnsureNotificationPermission = ::ensureNotificationPermission,
-        onShowEventOnMainMap = shellController::showEventOnMap,
-    )
+        CalendarDialogHost(
+            uiState = calendarState,
+            todayDay = container.clockProvider.today(),
+            controller = calendarController,
+            geocodingService = container.geocodingService,
+            locationProvider = container.deviceLocationProvider,
+            onEnsureNotificationPermission = ::ensureNotificationPermission,
+            onShowEventOnMainMap = shellController::showEventOnMap,
+        )
 
-    NotesDialogHost(
-        dialog = notesState.dialog,
-        controller = notesController,
-    )
+        NotesDialogHost(
+            dialog = notesState.dialog,
+            availableEvents = notesState.availableEvents,
+            controller = notesController,
+        )
+    }
 }

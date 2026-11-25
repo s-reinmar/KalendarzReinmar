@@ -23,13 +23,20 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.R
+import com.example.domain.model.CalendarEvent
+import com.example.domain.model.EventId
 import com.example.domain.model.Note
 import com.example.domain.service.PolishDateFormatter
 import com.example.ui.theme.AppIcons
@@ -37,10 +44,20 @@ import com.example.ui.theme.AppIcons
 @Composable
 internal fun NoteItemCard(
     note: Note,
+    attachedEvents: List<CalendarEvent>,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
+    onOpenAttachedEvent: (EventId) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val richColors = rememberNoteRichTextColors()
+    val formattedContent = remember(note.content, note.richSpans, richColors) {
+        NoteRichTextRenderer.toAnnotatedString(
+            document = note.document,
+            colors = richColors,
+        )
+    }
+
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -55,7 +72,7 @@ internal fun NoteItemCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 6.dp),
+                    .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.Top,
             ) {
                 Surface(
@@ -80,15 +97,30 @@ internal fun NoteItemCard(
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface,
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
                     }
                     Text(
-                        text = note.content,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        text = formattedContent,
+                        style = TextStyle(
+                            fontFamily = FontFamily.SansSerif,
+                            fontSize = 15.sp,
+                            lineHeight = 22.sp,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        ),
+                        maxLines = 10,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
+
+            if (attachedEvents.isNotEmpty()) {
+                NoteCardAttachedEventsRow(
+                    attachedEvents = attachedEvents,
+                    onEventClick = onOpenAttachedEvent,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 6.dp),
+                )
+            }
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

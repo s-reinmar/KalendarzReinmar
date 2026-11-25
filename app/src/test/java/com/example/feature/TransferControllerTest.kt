@@ -2,6 +2,7 @@ package com.example.feature
 
 import com.example.data.transfer.CsvTransferCodec
 import com.example.data.transfer.IcsEventCodec
+import com.example.domain.model.NoteDraft
 import com.example.domain.model.TransferFeedback
 import com.example.domain.service.DemoDataFactory
 import com.example.fakes.FakeClockProvider
@@ -55,7 +56,7 @@ class TransferControllerTest {
             }
 
             // Add one custom user note that must survive clearing demo data
-            noteRepo.addNote("Prywatna", "Nie usuwać")
+            noteRepo.addNote(NoteDraft.plain("Prywatna", "Nie usuwać"))
 
             controller.loadDemoData()
             advanceUntilIdle()
@@ -64,6 +65,7 @@ class TransferControllerTest {
             assertEquals(5, eventRepo.observeEvents().first().size)
             assertEquals(4, noteRepo.observeNotes().first().size)
             assertTrue(reminders.scheduledEvents.isNotEmpty())
+            assertTrue(noteRepo.observeNotes().first().any { it.hasAttachedEvents })
 
             // Second click must not duplicate demo items
             controller.loadDemoData()

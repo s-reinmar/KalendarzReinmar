@@ -10,6 +10,7 @@ import com.example.domain.model.ImportedEvent
 import com.example.domain.model.ImportedNote
 import com.example.domain.model.Note
 import com.example.domain.model.TimeOfDay
+import com.example.domain.service.NoteRichDocumentCodec
 import java.util.Locale
 
 class CsvTransferCodec {
@@ -42,11 +43,13 @@ class CsvTransferCodec {
 
     fun exportNotes(notes: List<Note>): String {
         val sb = StringBuilder()
-        sb.append("title,content\r\n")
+        sb.append("title,content,rich_spans\r\n")
         for (note in notes) {
             sb.append(CsvRowParser.escapeField(note.title))
             sb.append(',')
             sb.append(CsvRowParser.escapeField(note.content))
+            sb.append(',')
+            sb.append(CsvRowParser.escapeField(NoteRichDocumentCodec.encodeSpans(note.document.spans)))
             sb.append("\r\n")
         }
         return sb.toString()
@@ -69,6 +72,7 @@ class CsvTransferCodec {
             endDateIdx = firstRowNormalized.indexOfFirst { it in END_DATE_HEADERS },
             titleIdx = firstRowNormalized.indexOfFirst { it in TITLE_HEADERS },
             contentIdx = firstRowNormalized.indexOfFirst { it in CONTENT_HEADERS },
+            richSpansIdx = firstRowNormalized.indexOfFirst { it in RICH_SPANS_HEADERS },
             allDayIdx = firstRowNormalized.indexOfFirst { it in ALL_DAY_HEADERS },
             startTimeIdx = firstRowNormalized.indexOfFirst { it in START_TIME_HEADERS },
             endTimeIdx = firstRowNormalized.indexOfFirst { it in END_TIME_HEADERS },
@@ -92,6 +96,7 @@ class CsvTransferCodec {
             val dateValue = row.getOrNull(columns.dateIdx)?.trim().orEmpty()
             val titleValue = row.getOrNull(columns.titleIdx)?.trim().orEmpty()
             val contentValue = row.getOrNull(columns.contentIdx)?.trim().orEmpty()
+            val richSpans = NoteRichDocumentCodec.decodeSpans(row.getOrNull(columns.richSpansIdx))
 
             when {
                 typeValue in EVENT_TYPES -> {
@@ -99,7 +104,13 @@ class CsvTransferCodec {
                 }
                 typeValue in NOTE_TYPES -> {
                     if (contentValue.isNotEmpty()) {
-                        notes.add(ImportedNote(title = titleValue, content = contentValue))
+                        notes.add(
+                            ImportedNote(
+                                title = titleValue,
+                                content = contentValue,
+                                richSpans = richSpans,
+                            )
+                        )
                     }
                 }
                 columns.dateIdx >= 0 && columns.titleIdx >= 0 -> {
@@ -107,7 +118,13 @@ class CsvTransferCodec {
                 }
                 columns.contentIdx >= 0 -> {
                     if (contentValue.isNotEmpty()) {
-                        notes.add(ImportedNote(title = titleValue, content = contentValue))
+                        notes.add(
+                            ImportedNote(
+                                title = titleValue,
+                                content = contentValue,
+                                richSpans = richSpans,
+                            )
+                        )
                     }
                 }
             }
@@ -199,6 +216,7 @@ class CsvTransferCodec {
         val endDateIdx: Int,
         val titleIdx: Int,
         val contentIdx: Int,
+        val richSpansIdx: Int,
         val allDayIdx: Int,
         val startTimeIdx: Int,
         val endTimeIdx: Int,
@@ -216,6 +234,7 @@ class CsvTransferCodec {
         val END_DATE_HEADERS = setOf("end_date", "end date", "data_konca", "dtend")
         val TITLE_HEADERS = setOf("title", "tytul", "tytuł", "subject", "summary", "nazwa")
         val CONTENT_HEADERS = setOf("content", "tresc", "treść", "body", "note", "notatka", "text", "tekst")
+        val RICH_SPANS_HEADERS = setOf("rich_spans", "formatowanie", "spans")
         val ALL_DAY_HEADERS = setOf("all_day", "all day", "caly_dzien", "cały_dzień")
         val START_TIME_HEADERS = setOf("start_time", "start time", "godzina_od")
         val END_TIME_HEADERS = setOf("end_time", "end time", "godzina_do")

@@ -3,11 +3,13 @@ package com.example.feature.notes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.example.R
+import com.example.domain.model.CalendarEvent
 import com.example.ui.components.ConfirmDeleteDialog
 
 @Composable
 fun NotesDialogHost(
     dialog: NotesDialogState,
+    availableEvents: List<CalendarEvent>,
     controller: NotesController,
 ) {
     when (dialog) {
@@ -15,6 +17,7 @@ fun NotesDialogHost(
 
         NotesDialogState.Create -> {
             NoteFormDialog(
+                availableEvents = availableEvents,
                 onDismiss = controller::dismissDialog,
                 onSave = controller::createNote,
             )
@@ -23,9 +26,10 @@ fun NotesDialogHost(
         is NotesDialogState.Edit -> {
             NoteFormDialog(
                 existingNote = dialog.note,
+                availableEvents = availableEvents,
                 onDismiss = controller::dismissDialog,
-                onSave = { title, content ->
-                    controller.updateNote(note = dialog.note, title = title, content = content)
+                onSave = { draft ->
+                    controller.updateNote(note = dialog.note, draft = draft)
                 },
             )
         }
