@@ -1,3 +1,45 @@
 <resources>
     <string name="app_name">KalendarzReinmar</string>
+
+    <string name="nav_calendar">Kalendarz</string>
+    <string name="nav_notes">Notatki</string>
+
+    <string name="calendar_prev_month">Poprzedni miesiąc</string>
+    <string name="calendar_next_month">Następny miesiąc</string>
+    <string name="calendar_events_for_day">Wydarzenia: %1$s</string>
+    <string name="calendar_all_events">Wszystkie wydarzenia</string>
+    <string name="calendar_empty_events">Brak wydarzeń</string>
+    <string name="calendar_empty_events_for_day">Brak wydarzeń w tym dniu</string>
+    <string name="calendar_add_event">Dodaj wydarzenie</string>
+    <string name="calendar_event_title_label">Tytuł wydarzenia</string>
+    <string name="calendar_event_date_label">Data</string>
+    <string name="calendar_select_date">Wybierz datę</string>
+    <string name="calendar_show_all">Pokaż wszystkie</string>
+
+    <string name="notes_add_note">Dodaj notatkę</string>
+    <string name="notes_empty">Brak notatek</string>
+    <string name="notes_title_label">Tytuł (opcjonalnie)</string>
+    <string name="notes_content_label">Treść notatki</string>
+
+    <string name="action_save">Zapisz</string>
+    <string name="action_cancel">Anuluj</string>
+
+    <string name="cd_calendar_icon">Ikona kalendarza</string>
+    <string name="cd_notes_icon">Ikona notatek</string>
+    <string name="cd_add_icon">Ikona dodawania</string>
+    <string name="cd_event_icon">Ikona wydarzenia</string>
+    <string name="cd_note_icon">Ikona notatki</string>
+
+    <string name="transfer_menu_description">Import i eksport</string>
+    <string name="transfer_import_ics">Importuj .ics</string>
+    <string name="transfer_export_ics">Eksportuj .ics</string>
+    <string name="transfer_import_csv">Importuj .csv</string>
+    <string name="transfer_export_csv">Eksportuj .csv</string>
+    <string name="transfer_imported_events">Zaimportowano wydarzeń: %1$d</string>
+    <string name="transfer_imported_notes">Zaimportowano notatek: %1$d</string>
+    <string name="transfer_imported_both">Zaimportowano wydarzeń: %1$d, notatek: %2$d</string>
+    <string name="transfer_exported_events">Wyeksportowano wydarzeń: %1$d</string>
+    <string name="transfer_exported_notes">Wyeksportowano notatek: %1$d</string>
+    <string name="transfer_nothing_to_import">Nie znaleziono poprawnych danych do importu</string>
+    <string name="transfer_error">Błąd podczas operacji na pliku</string>
 </resources>

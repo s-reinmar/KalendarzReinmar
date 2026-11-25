@@ -4,36 +4,31 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.example.ui.theme.MyApplicationTheme
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.data.AppDatabase
+import com.example.data.ReinmarRepository
+import com.example.ui.ReinmarApp
+import com.example.ui.ReinmarViewModel
+import com.example.ui.theme.KalendarzReinmarTheme
 
 class MainActivity : ComponentActivity() {
-  override fun onCreate(savedInstanceState: Bundle?) {
-    super.onCreate(savedInstanceState)
-    enableEdgeToEdge()
-    setContent {
-      MyApplicationTheme {
-        Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-          Greeting(name = "Android", modifier = Modifier.padding(innerPadding))
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+
+        val database = AppDatabase.getInstance(applicationContext)
+        val repository = ReinmarRepository(
+            eventDao = database.calendarEventDao(),
+            noteDao = database.noteDao(),
+        )
+
+        setContent {
+            KalendarzReinmarTheme {
+                val reinmarViewModel: ReinmarViewModel = viewModel(
+                    factory = ReinmarViewModel.factory(repository),
+                )
+                ReinmarApp(viewModel = reinmarViewModel)
+            }
         }
-      }
     }
-  }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-  Text(text = "Hello $name!", modifier = modifier)
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-  MyApplicationTheme { Greeting("Android") }
 }

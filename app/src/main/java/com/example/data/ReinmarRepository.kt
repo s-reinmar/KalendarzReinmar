@@ -1,0 +1,64 @@
+package com.example.data
+
+import kotlinx.coroutines.flow.Flow
+
+class ReinmarRepository(
+    private val eventDao: CalendarEventDao,
+    private val noteDao: NoteDao,
+) {
+    val events: Flow<List<CalendarEventEntity>> = eventDao.getAllEvents()
+    val notes: Flow<List<NoteEntity>> = noteDao.getAllNotes()
+
+    suspend fun addEvent(title: String, dateKey: String) {
+        val trimmedTitle = title.trim()
+        if (trimmedTitle.isEmpty()) return
+        eventDao.insertEvent(
+            CalendarEventEntity(
+                title = trimmedTitle,
+                dateKey = dateKey,
+            )
+        )
+    }
+
+    suspend fun addNote(title: String, content: String) {
+        val trimmedTitle = title.trim()
+        val trimmedContent = content.trim()
+        if (trimmedContent.isEmpty()) return
+        noteDao.insertNote(
+            NoteEntity(
+                title = trimmedTitle,
+                content = trimmedContent,
+            )
+        )
+    }
+
+    suspend fun addEvents(events: List<CalendarEventEntity>): Int {
+        val valid = events.mapNotNull { event ->
+            val trimmedTitle = event.title.trim()
+            if (trimmedTitle.isEmpty() || event.dateKey.isBlank()) {
+                null
+            } else {
+                event.copy(id = 0L, title = trimmedTitle)
+            }
+        }
+        if (valid.isNotEmpty()) {
+            eventDao.insertEvents(valid)
+        }
+        return valid.size
+    }
+
+    suspend fun addNotes(notes: List<NoteEntity>): Int {
+        val valid = notes.mapNotNull { note ->
+            val trimmedContent = note.content.trim()
+            if (trimmedContent.isEmpty()) {
+                null
+            } else {
+                note.copy(id = 0L, title = note.title.trim(), content = trimmedContent)
+            }
+        }
+        if (valid.isNotEmpty()) {
+            noteDao.insertNotes(valid)
+        }
+        return valid.size
+    }
+}
