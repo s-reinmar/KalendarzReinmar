@@ -3,6 +3,12 @@ package com.example.domain.model
 data class ImportedEvent(
     val title: String,
     val dateKey: DateKey,
+    val endDateKey: DateKey? = null,
+    val entryType: CalendarEntryType = CalendarEntryType.EVENT,
+    val isAllDay: Boolean = true,
+    val timeRange: EventTimeRange? = null,
+    val description: String = "",
+    val recurrence: EventRecurrence = EventRecurrence.NONE,
 )
 
 data class ImportedNote(

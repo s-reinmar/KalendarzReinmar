@@ -1,16 +1,20 @@
 package com.example.feature.calendar
 
 import com.example.domain.model.CalendarDay
+import com.example.domain.model.CalendarEntryType
 import com.example.domain.model.CalendarEvent
 import com.example.domain.model.DateKey
+import com.example.domain.model.EventColorTag
 import com.example.domain.model.EventId
 import com.example.domain.model.EventLocation
 import com.example.domain.service.CalendarGridBuilder
+import com.example.domain.service.EventScheduleMatcher
 
 sealed interface CalendarDialogState {
     data object None : CalendarDialogState
     data class CreateEvent(
         val initialDateKey: DateKey,
+        val initialEntryType: CalendarEntryType = CalendarEntryType.EVENT,
         val initialLocation: EventLocation? = null,
     ) : CalendarDialogState
 
@@ -26,6 +30,7 @@ data class CalendarUiState(
     val displayedYear: Int,
     val displayedMonth: Int,
     val selectedDateKey: DateKey? = null,
+    val activeTypeFilter: CalendarEntryType? = null,
     val todayDateKey: DateKey,
     val dialog: CalendarDialogState = CalendarDialogState.None,
 ) {
@@ -33,15 +38,37 @@ data class CalendarUiState(
         CalendarGridBuilder.buildMonthGrid(displayedYear, displayedMonth)
     }
 
-    val eventDates: Set<DateKey>
-        get() = events.mapTo(HashSet()) { it.dateKey }
-
-    val visibleEvents: List<CalendarEvent>
-        get() = if (selectedDateKey == null) {
+    val typeFilteredEvents: List<CalendarEvent> by lazy {
+        if (activeTypeFilter == null) {
             events
         } else {
-            events.filter { it.dateKey == selectedDateKey }
+            events.filter { it.entryType == activeTypeFilter }
         }
+    }
+
+    val dayColorDots: Map<DateKey, List<EventColorTag>> by lazy {
+        EventScheduleMatcher.collectColorDotsForMonth(
+            events = typeFilteredEvents,
+            year = displayedYear,
+            month = displayedMonth,
+        )
+    }
+
+    val eventDates: Set<DateKey>
+        get() = dayColorDots.keys
+
+    val visibleEvents: List<CalendarEvent> by lazy {
+        val date = selectedDateKey
+        if (date == null) {
+            typeFilteredEvents
+        } else {
+            typeFilteredEvents.filter { EventScheduleMatcher.occursOn(it, date) }
+        }
+    }
+
+    val entryTypeCounts: Map<CalendarEntryType, Int> by lazy {
+        events.groupingBy { it.entryType }.eachCount()
+    }
 
     val detailEvent: CalendarEvent?
         get() = (dialog as? CalendarDialogState.EventDetails)?.let { details ->

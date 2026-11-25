@@ -18,6 +18,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -42,12 +43,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.R
 import com.example.domain.model.CalendarEvent
+import com.example.domain.model.EventTypeDetails
 import com.example.domain.service.PolishDateFormatter
 import com.example.feature.map.leaflet.LeafletMapController
 import com.example.feature.map.leaflet.LeafletMapMarker
@@ -59,18 +62,28 @@ import com.example.ui.theme.AppIcons
 fun EventDetailDialog(
     event: CalendarEvent,
     onDismiss: () -> Unit,
+    onToggleTaskCompleted: () -> Unit,
     onEditClick: () -> Unit,
     onReminderClick: () -> Unit,
     onShowOnMainMap: () -> Unit,
     onDeleteClick: () -> Unit,
 ) {
+    val palette = CalendarEntryVisuals.palette(event.colorTag)
     val location = event.location
     val locationSummary = location?.formatSummary()
     val detailMapController = remember(event.id) { LeafletMapController() }
+    val isTask = event.details is EventTypeDetails.Task
+    val isCompleted = event.isCompletedTask
 
     val detailSubtitle = remember(event) {
         buildString {
             append(PolishDateFormatter.formatDateKeyDisplay(event.dateKey))
+            event.timeRange?.let { range ->
+                if (!event.isAllDay) {
+                    append(" • ")
+                    append(range.formatDisplay())
+                }
+            }
             event.reminderTime?.let { reminder ->
                 append(" • ")
                 append(reminder.formatHHmm())
@@ -130,11 +143,29 @@ fun EventDetailDialog(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Text(
-                        text = stringResource(R.string.event_detail_title),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = palette.container,
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Icon(
+                                painter = painterResource(CalendarEntryVisuals.iconRes(event.entryType)),
+                                contentDescription = null,
+                                tint = palette.onContainer,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Text(
+                                text = stringResource(CalendarEntryVisuals.labelRes(event.entryType)),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = palette.onContainer,
+                            )
+                        }
+                    }
+
                     IconButton(
                         onClick = onDismiss,
                         modifier = Modifier
@@ -150,15 +181,20 @@ fun EventDetailDialog(
 
                 Text(
                     text = event.title,
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None,
+                    ),
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.testTag("event_detail_event_title"),
                 )
 
                 EventDetailInfoCard(
                     event = event,
+                    palette = palette,
                     locationSummary = locationSummary,
                 )
+
+                EventDetailTypeSection(event = event)
 
                 if (location != null) {
                     LeafletMapView(
@@ -170,7 +206,7 @@ fun EventDetailDialog(
                         enableTapSelection = false,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(260.dp)
+                            .height(240.dp)
                             .clip(RoundedCornerShape(16.dp))
                             .testTag("event_detail_leaflet_map"),
                     )
@@ -183,6 +219,27 @@ fun EventDetailDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
+                    if (isTask) {
+                        FilledTonalButton(
+                            onClick = onToggleTaskCompleted,
+                            modifier = Modifier
+                                .minimumInteractiveComponentSize()
+                                .testTag("event_detail_toggle_task_button"),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                stringResource(
+                                    if (isCompleted) R.string.task_status_pending else R.string.task_status_completed
+                                )
+                            )
+                        }
+                    }
+
                     FilledTonalButton(
                         onClick = onEditClick,
                         modifier = Modifier
@@ -257,8 +314,30 @@ fun EventDetailDialog(
 @Composable
 private fun EventDetailInfoCard(
     event: CalendarEvent,
+    palette: EntryColorPalette,
     locationSummary: String?,
 ) {
+    val startDateText = PolishDateFormatter.formatDateKeyDisplay(event.dateKey)
+    val fullDateText = if (event.isMultiDay) {
+        "$startDateText – ${PolishDateFormatter.formatDateKeyDisplay(event.effectiveEndDateKey)}"
+    } else {
+        startDateText
+    }
+    val scheduleText = buildString {
+        append(fullDateText)
+        if (event.isAllDay) {
+            append(" • ")
+            append(stringResource(R.string.entry_all_day_label))
+        } else if (event.timeRange != null) {
+            append(" • ")
+            append(event.timeRange.formatDisplay())
+        }
+        if (event.recurrence.isRepeating) {
+            append(" • ")
+            append(stringResource(CalendarEntryVisuals.recurrenceLabelRes(event.recurrence)))
+        }
+    }
+
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -278,11 +357,11 @@ private fun EventDetailInfoCard(
                 Icon(
                     painter = painterResource(AppIcons.calendar),
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.secondary,
+                    tint = palette.accent,
                     modifier = Modifier.size(18.dp),
                 )
                 Text(
-                    text = PolishDateFormatter.formatDateKeyDisplay(event.dateKey),
+                    text = scheduleText,
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
@@ -362,7 +441,7 @@ private fun NoLocationPlaceholderCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 20.dp),
+                .padding(horizontal = 16.dp, vertical = 18.dp),
             contentAlignment = Alignment.Center,
         ) {
             Column(

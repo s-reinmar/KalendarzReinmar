@@ -177,14 +177,16 @@
         var map = L.map('map', {
           zoomControl: true,
           attributionControl: true,
-          preferCanvas: true,
+          preferCanvas: false,
           fadeAnimation: false,
-          zoomAnimation: true
+          zoomAnimation: false,
+          markerZoomAnimation: false
         }).setView([INITIAL_LAT, INITIAL_LNG], INITIAL_ZOOM);
 
         var osmLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
           maxZoom: 19,
-          keepBuffer: 1,
+          keepBuffer: 0,
+          detectRetina: false,
           updateWhenIdle: true,
           updateWhenZooming: false,
           crossOrigin: false,
@@ -227,15 +229,28 @@
           }
         }
 
+        var pendingFitAll = false;
+
+        function hasValidSize() {
+          var el = document.getElementById('map');
+          return el && el.clientWidth > 0 && el.clientHeight > 0;
+        }
+
         function fitAll() {
           var latLngs = [];
           Object.keys(markerMap).forEach(function(key) {
             latLngs.push(markerMap[key].getLatLng());
           });
+          if (latLngs.length === 0) return;
+          if (!hasValidSize()) {
+            pendingFitAll = true;
+            return;
+          }
+          pendingFitAll = false;
           if (latLngs.length === 1) {
-            map.setView(latLngs[0], 14);
-          } else if (latLngs.length > 1) {
-            map.fitBounds(L.latLngBounds(latLngs), { padding: [48, 48], maxZoom: 15 });
+            map.setView(latLngs[0], 14, { animate: false });
+          } else {
+            map.fitBounds(L.latLngBounds(latLngs), { padding: [48, 48], maxZoom: 15, animate: false });
           }
         }
 
@@ -332,18 +347,34 @@
         }
 
         var resizeTimer = null;
+        var resizeObserver = null;
         function refreshSize() {
           if (resizeTimer) clearTimeout(resizeTimer);
           resizeTimer = setTimeout(function() {
+            if (!hasValidSize()) return;
             map.invalidateSize({ animate: false, pan: false });
+            if (pendingFitAll) {
+              fitAll();
+            }
           }, 120);
         }
         window.addEventListener('resize', refreshSize);
         if (typeof ResizeObserver !== 'undefined') {
-          new ResizeObserver(refreshSize).observe(document.getElementById('map'));
+          var mapEl = document.getElementById('map');
+          if (mapEl) {
+            resizeObserver = new ResizeObserver(refreshSize);
+            resizeObserver.observe(mapEl);
+          }
         }
+        window.addEventListener('pagehide', function() {
+          if (resizeTimer) clearTimeout(resizeTimer);
+          window.removeEventListener('resize', refreshSize);
+          if (resizeObserver) {
+            resizeObserver.disconnect();
+            resizeObserver = null;
+          }
+        });
         setTimeout(refreshSize, 150);
-        setTimeout(refreshSize, 500);
 
         if (window.ReinmarMapBridge && typeof window.ReinmarMapBridge.onMapReady === 'function') {
           window.ReinmarMapBridge.onMapReady();

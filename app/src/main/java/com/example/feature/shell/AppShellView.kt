@@ -32,8 +32,10 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -48,6 +50,8 @@ import com.example.di.AppContainer
 import com.example.feature.calendar.CalendarController
 import com.example.feature.calendar.CalendarDialogHost
 import com.example.feature.calendar.CalendarScreen
+import com.example.feature.calendar.CreateEntrySpeedDialFab
+import com.example.feature.calendar.CreateEntrySpeedDialScrim
 import com.example.feature.map.EventsMapScreen
 import com.example.feature.map.MapController
 import com.example.feature.notes.NotesController
@@ -70,11 +74,16 @@ fun AppShellView(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    var isCreateMenuExpanded by remember { mutableStateOf(false) }
 
     val shellState by shellController.uiState.collectAsStateWithLifecycle()
     val calendarState by calendarController.uiState.collectAsStateWithLifecycle()
     val mapState by mapController.uiState.collectAsStateWithLifecycle()
     val notesState by notesController.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(shellState.activeTab) {
+        isCreateMenuExpanded = false
+    }
 
     LaunchedEffect(shellState.pendingOpenEventId, calendarState.events) {
         val targetId = shellState.pendingOpenEventId
@@ -144,7 +153,7 @@ fun AppShellView(
         }
     }
 
-    BackHandler(enabled = shellState.activeTab != AppTab.CALENDAR) {
+    BackHandler(enabled = !isCreateMenuExpanded && shellState.activeTab != AppTab.CALENDAR) {
         shellController.navigateBackToCalendar()
     }
 
@@ -230,30 +239,31 @@ fun AppShellView(
                     }
                 },
                 floatingActionButton = {
-                    FloatingActionButton(
-                        onClick = {
-                            when (shellState.activeTab) {
-                                AppTab.CALENDAR, AppTab.MAP -> calendarController.openCreateEvent()
-                                AppTab.NOTES -> notesController.openCreateNote()
+                    when (shellState.activeTab) {
+                        AppTab.CALENDAR, AppTab.MAP -> {
+                            CreateEntrySpeedDialFab(
+                                expanded = isCreateMenuExpanded,
+                                onToggle = { isCreateMenuExpanded = !isCreateMenuExpanded },
+                                onSelectType = { entryType ->
+                                    isCreateMenuExpanded = false
+                                    calendarController.openCreateEvent(entryType = entryType)
+                                },
+                            )
+                        }
+                        AppTab.NOTES -> {
+                            FloatingActionButton(
+                                onClick = notesController::openCreateNote,
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.testTag("fab_add_note"),
+                            ) {
+                                Icon(
+                                    painter = painterResource(AppIcons.add),
+                                    contentDescription = stringResource(R.string.notes_add_note),
+                                    modifier = Modifier.size(24.dp),
+                                )
                             }
-                        },
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.testTag(
-                            when (shellState.activeTab) {
-                                AppTab.CALENDAR, AppTab.MAP -> "fab_add_event"
-                                AppTab.NOTES -> "fab_add_note"
-                            }
-                        ),
-                    ) {
-                        Icon(
-                            painter = painterResource(AppIcons.add),
-                            contentDescription = when (shellState.activeTab) {
-                                AppTab.CALENDAR, AppTab.MAP -> stringResource(R.string.calendar_add_event)
-                                AppTab.NOTES -> stringResource(R.string.notes_add_note)
-                            },
-                            modifier = Modifier.size(24.dp),
-                        )
+                        }
                     }
                 },
             ) { innerPadding ->
@@ -275,9 +285,11 @@ fun AppShellView(
                                 CalendarScreen(
                                     uiState = calendarState,
                                     onSelectDate = calendarController::selectDate,
+                                    onSelectTypeFilter = calendarController::selectTypeFilter,
                                     onPreviousMonth = calendarController::previousMonth,
                                     onNextMonth = calendarController::nextMonth,
                                     onEventClick = { calendarController.openEventDetails(it.id) },
+                                    onToggleTaskCompleted = calendarController::toggleTaskCompletion,
                                     onLocationPinClick = calendarController::openLocationPinAction,
                                     onReminderClick = calendarController::openReminderEditor,
                                     onEditClick = calendarController::openEditEvent,
@@ -297,7 +309,7 @@ fun AppShellView(
                                     onShowMessage = { message ->
                                         coroutineScope.launch { snackbarHostState.showSnackbar(message) }
                                     },
-                                    isPaused = calendarState.hasOpenDialog,
+                                    isPaused = calendarState.hasOpenDialog || isCreateMenuExpanded,
                                 )
                             }
                             AppTab.NOTES -> {
@@ -310,6 +322,11 @@ fun AppShellView(
                             }
                         }
                     }
+
+                    CreateEntrySpeedDialScrim(
+                        expanded = isCreateMenuExpanded && shellState.activeTab != AppTab.NOTES,
+                        onDismiss = { isCreateMenuExpanded = false },
+                    )
                 }
             }
         }

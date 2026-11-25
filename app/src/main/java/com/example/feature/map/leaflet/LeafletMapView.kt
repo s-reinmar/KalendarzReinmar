@@ -1,6 +1,7 @@
 package com.example.feature.map.leaflet
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.graphics.Color as AndroidColor
 import android.os.Build
 import android.view.MotionEvent
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -44,11 +46,50 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.R
 import com.example.domain.model.EventId
 import com.example.domain.model.GeoPoint
+import kotlinx.coroutines.delay
 
 private const val DEFAULT_ZOOM = 6
 private const val MAP_BASE_URL = "https://kalendarzreinmar.app/"
 private const val JS_BRIDGE_NAME = "ReinmarMapBridge"
 private const val MAX_AUTO_RELOADS = 2
+private const val RENDERER_RECOVERY_DELAY_MS = 400L
+
+private class WebViewSession(
+    val webView: WebView,
+    val bridge: LeafletBridge,
+) {
+    private var destroyed: Boolean = false
+
+    val isActive: Boolean
+        get() = !destroyed
+
+    fun pauseIfActive() {
+        if (!destroyed) runCatching { webView.onPause() }
+    }
+
+    fun resumeIfActive() {
+        if (!destroyed) runCatching { webView.onResume() }
+    }
+
+    fun destroyOnce(rendererAlreadyGone: Boolean) {
+        if (destroyed) return
+        destroyed = true
+        bridge.deactivate()
+        runCatching {
+            webView.webViewClient = WebViewClient()
+            webView.webChromeClient = null
+            webView.setOnTouchListener(null)
+            webView.removeJavascriptInterface(JS_BRIDGE_NAME)
+            if (!rendererAlreadyGone) {
+                webView.stopLoading()
+                webView.onPause()
+            }
+            (webView.parent as? ViewGroup)?.removeView(webView)
+            webView.removeAllViews()
+            webView.destroy()
+        }
+    }
+}
 
 @SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
 @Composable
@@ -68,9 +109,10 @@ fun LeafletMapView(
     val latestOnMapTap by rememberUpdatedState(onMapTap)
     val latestOnMarkerTap by rememberUpdatedState(onMarkerTap)
     val lifecycleOwner = LocalLifecycleOwner.current
-    var webViewRef by remember { mutableStateOf<WebView?>(null) }
+    var activeSession by remember { mutableStateOf<WebViewSession?>(null) }
     var sessionKey by remember { mutableIntStateOf(0) }
     var autoReloadCount by remember { mutableIntStateOf(0) }
+    var recoveringRenderer by remember { mutableStateOf(false) }
     var rendererCrashed by remember { mutableStateOf(false) }
 
     val html = remember(initialCenter, initialZoom, enableTapSelection) {
@@ -82,23 +124,35 @@ fun LeafletMapView(
         )
     }
 
-    LaunchedEffect(sessionKey, markers, fitBoundsOnMarkersChange) {
-        if (!rendererCrashed) {
+    LaunchedEffect(recoveringRenderer) {
+        if (recoveringRenderer) {
+            delay(RENDERER_RECOVERY_DELAY_MS)
+            sessionKey++
+            recoveringRenderer = false
+        }
+    }
+
+    LaunchedEffect(sessionKey, markers, fitBoundsOnMarkersChange, recoveringRenderer, rendererCrashed) {
+        if (!recoveringRenderer && !rendererCrashed) {
             controller.setMarkers(markers, fitBounds = fitBoundsOnMarkersChange)
         }
     }
 
-    LaunchedEffect(isPaused, webViewRef) {
-        val view = webViewRef ?: return@LaunchedEffect
-        if (isPaused) runCatching { view.onPause() } else runCatching { view.onResume() }
+    var lastPausedState by remember(sessionKey) { mutableStateOf(false) }
+    LaunchedEffect(isPaused, activeSession) {
+        val session = activeSession ?: return@LaunchedEffect
+        if (isPaused != lastPausedState) {
+            lastPausedState = isPaused
+            if (isPaused) session.pauseIfActive() else session.resumeIfActive()
+        }
     }
 
-    DisposableEffect(lifecycleOwner, webViewRef, isPaused) {
+    DisposableEffect(lifecycleOwner, activeSession, isPaused) {
         val observer = LifecycleEventObserver { _, event ->
-            val view = webViewRef ?: return@LifecycleEventObserver
+            val session = activeSession ?: return@LifecycleEventObserver
             when (event) {
-                Lifecycle.Event.ON_PAUSE -> runCatching { view.onPause() }
-                Lifecycle.Event.ON_RESUME -> if (!isPaused) runCatching { view.onResume() }
+                Lifecycle.Event.ON_PAUSE -> session.pauseIfActive()
+                Lifecycle.Event.ON_RESUME -> if (!isPaused) session.resumeIfActive()
                 else -> Unit
             }
         }
@@ -118,35 +172,62 @@ fun LeafletMapView(
         return
     }
 
+    if (recoveringRenderer) {
+        MapRecoveringPlaceholder(modifier = modifier)
+        return
+    }
+
     key(sessionKey) {
         AndroidView(
             factory = { ctx ->
-                createLeafletWebView(
+                val createdSession = createLeafletSession(
                     context = ctx,
                     html = html,
                     controller = controller,
                     onMapTap = { latestOnMapTap(it) },
                     onMarkerTap = { latestOnMarkerTap(it) },
-                    onRendererGone = { crashedView ->
-                        controller.detach()
-                        if (webViewRef === crashedView) webViewRef = null
-                        safelyDestroyWebView(crashedView)
+                    onRendererGone = { goneSession ->
+                        controller.detach(goneSession.webView)
+                        if (activeSession === goneSession) {
+                            activeSession = null
+                        }
+                        goneSession.destroyOnce(rendererAlreadyGone = true)
                         if (autoReloadCount < MAX_AUTO_RELOADS) {
                             autoReloadCount++
-                            sessionKey++
+                            recoveringRenderer = true
                         } else {
                             rendererCrashed = true
                         }
                     },
-                ).also { webViewRef = it }
+                )
+                activeSession = createdSession
+                createdSession.webView
             },
             onRelease = { view ->
-                controller.detach()
-                if (webViewRef === view) webViewRef = null
-                safelyDestroyWebView(view)
+                controller.detach(view)
+                val session = activeSession
+                if (session != null && session.webView === view) {
+                    activeSession = null
+                    session.destroyOnce(rendererAlreadyGone = false)
+                }
             },
             modifier = modifier,
         )
+    }
+}
+
+@Composable
+private fun MapRecoveringPlaceholder(modifier: Modifier = Modifier) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = modifier,
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularProgressIndicator()
+        }
     }
 }
 
@@ -188,59 +269,66 @@ private fun MapCrashFallback(
 }
 
 @SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
-private fun createLeafletWebView(
-    context: android.content.Context,
+private fun createLeafletSession(
+    context: Context,
     html: String,
     controller: LeafletMapController,
     onMapTap: (GeoPoint) -> Unit,
     onMarkerTap: (EventId) -> Unit,
-    onRendererGone: (WebView) -> Unit,
-): WebView = WebView(context).apply {
-    layoutParams = ViewGroup.LayoutParams(
-        ViewGroup.LayoutParams.MATCH_PARENT,
-        ViewGroup.LayoutParams.MATCH_PARENT,
+    onRendererGone: (WebViewSession) -> Unit,
+): WebViewSession {
+    val webView = WebView(context)
+    val bridge = LeafletBridge(
+        onReady = { controller.onMapReady(webView) },
+        onMapTap = onMapTap,
+        onMarkerTap = onMarkerTap,
     )
-    setBackgroundColor(AndroidColor.parseColor("#EFECE4"))
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_BOUND, true)
-    }
-    configureLeafletSettings(settings)
-    webChromeClient = WebChromeClient()
-    controller.attach(this)
-    webViewClient = object : WebViewClient() {
-        override fun shouldOverrideUrlLoading(
-            view: WebView?,
-            request: WebResourceRequest?,
-        ): Boolean = true
+    val session = WebViewSession(webView = webView, bridge = bridge)
 
-        override fun onRenderProcessGone(
-            view: WebView?,
-            detail: RenderProcessGoneDetail?,
-        ): Boolean {
-            if (view != null) onRendererGone(view)
-            return true
+    webView.apply {
+        layoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT,
+        )
+        setBackgroundColor(AndroidColor.parseColor("#EFECE4"))
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false)
         }
-    }
-    setOnTouchListener { view, event ->
-        when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
-                view.parent?.requestDisallowInterceptTouchEvent(true)
-            }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                view.parent?.requestDisallowInterceptTouchEvent(false)
+        configureLeafletSettings(settings)
+        webChromeClient = WebChromeClient()
+        controller.attach(this)
+        webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(
+                view: WebView?,
+                request: WebResourceRequest?,
+            ): Boolean = true
+
+            override fun onRenderProcessGone(
+                view: WebView?,
+                detail: RenderProcessGoneDetail?,
+            ): Boolean {
+                if (session.isActive) {
+                    onRendererGone(session)
+                }
+                return true
             }
         }
-        false
+        setOnTouchListener { view, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
+                    view.parent?.requestDisallowInterceptTouchEvent(true)
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    view.parent?.requestDisallowInterceptTouchEvent(false)
+                }
+            }
+            false
+        }
+        addJavascriptInterface(bridge, JS_BRIDGE_NAME)
+        loadDataWithBaseURL(MAP_BASE_URL, html, "text/html", "UTF-8", null)
     }
-    addJavascriptInterface(
-        LeafletBridge(
-            onReady = { controller.onMapReady() },
-            onMapTap = onMapTap,
-            onMarkerTap = onMarkerTap,
-        ),
-        JS_BRIDGE_NAME,
-    )
-    loadDataWithBaseURL(MAP_BASE_URL, html, "text/html", "UTF-8", null)
+
+    return session
 }
 
 @SuppressLint("SetJavaScriptEnabled")
@@ -261,17 +349,4 @@ private fun configureLeafletSettings(settings: WebSettings) {
         .replace("; wv)", ")")
         .replace("; wv;", ";")
     settings.userAgentString = "$sanitizedUa KalendarzReinmar/1.0"
-}
-
-private fun safelyDestroyWebView(view: WebView) {
-    runCatching {
-        view.stopLoading()
-        view.removeJavascriptInterface(JS_BRIDGE_NAME)
-        view.setOnTouchListener(null)
-        view.webChromeClient = null
-        view.onPause()
-        (view.parent as? ViewGroup)?.removeView(view)
-        view.removeAllViews()
-        view.destroy()
-    }
 }

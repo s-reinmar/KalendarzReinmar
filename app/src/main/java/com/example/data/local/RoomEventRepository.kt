@@ -1,9 +1,8 @@
 package com.example.data.local
 
 import com.example.data.CalendarEventDao
-import com.example.data.CalendarEventEntity
 import com.example.domain.model.CalendarEvent
-import com.example.domain.model.DateKey
+import com.example.domain.model.EventDraft
 import com.example.domain.model.EventId
 import com.example.domain.model.EventLocation
 import com.example.domain.model.ReminderTime
@@ -23,47 +22,55 @@ class RoomEventRepository(
     override suspend fun getEventsWithReminders(): List<CalendarEvent> =
         eventDao.getEventsWithReminders().map(CalendarEventMapper::toDomain)
 
-    override suspend fun addEvent(
-        title: String,
-        dateKey: DateKey,
-        reminderTime: ReminderTime?,
-        location: EventLocation?,
-    ): CalendarEvent? {
-        val trimmedTitle = title.trim()
-        if (trimmedTitle.isEmpty()) return null
-
+    override suspend fun addEvent(draft: EventDraft): CalendarEvent? {
+        val cleanDraft = draft.sanitized() ?: return null
         val createdAt = clock.nowMillis()
-        val entity = CalendarEventEntity(
-            title = trimmedTitle,
-            dateKey = dateKey.value,
-            reminderTimeMinutes = reminderTime?.minutesOfDay,
-            locationLat = location?.point?.lat,
-            locationLng = location?.point?.lng,
-            locationLabel = location?.sanitizedLabel,
-            createdAt = createdAt,
+        val domainEvent = CalendarEvent(
+            id = EventId.UNASSIGNED,
+            title = cleanDraft.title,
+            dateKey = cleanDraft.dateKey,
+            endDateKey = cleanDraft.endDateKey,
+            isAllDay = cleanDraft.isAllDay,
+            timeRange = cleanDraft.timeRange,
+            description = cleanDraft.description,
+            recurrence = cleanDraft.recurrence,
+            colorTag = cleanDraft.colorTag,
+            details = cleanDraft.details,
+            reminderTime = cleanDraft.reminderTime,
+            location = cleanDraft.location,
+            createdAtMillis = createdAt,
         )
-        val insertedId = eventDao.insertEvent(entity)
-        return CalendarEventMapper.toDomain(entity.copy(id = insertedId))
+        val insertedId = eventDao.insertEvent(CalendarEventMapper.toEntity(domainEvent))
+        return domainEvent.copy(id = EventId(insertedId))
     }
 
     override suspend fun updateEvent(
         event: CalendarEvent,
-        title: String,
-        dateKey: DateKey,
-        reminderTime: ReminderTime?,
-        location: EventLocation?,
+        draft: EventDraft,
     ): CalendarEvent? {
-        val trimmedTitle = title.trim()
-        if (trimmedTitle.isEmpty()) return null
-
+        val cleanDraft = draft.sanitized() ?: return null
         val updated = event.copy(
-            title = trimmedTitle,
-            dateKey = dateKey,
-            reminderTime = reminderTime,
-            location = location?.let { EventLocation(it.point, it.sanitizedLabel) },
+            title = cleanDraft.title,
+            dateKey = cleanDraft.dateKey,
+            endDateKey = cleanDraft.endDateKey,
+            isAllDay = cleanDraft.isAllDay,
+            timeRange = cleanDraft.timeRange,
+            description = cleanDraft.description,
+            recurrence = cleanDraft.recurrence,
+            colorTag = cleanDraft.colorTag,
+            details = cleanDraft.details,
+            reminderTime = cleanDraft.reminderTime,
+            location = cleanDraft.location,
         )
         eventDao.updateEvent(CalendarEventMapper.toEntity(updated))
         return updated
+    }
+
+    override suspend fun setTaskCompleted(eventId: EventId, completed: Boolean) {
+        eventDao.updateTaskCompleted(
+            eventId = eventId.value,
+            completed = completed,
+        )
     }
 
     override suspend fun updateEventReminder(
@@ -86,22 +93,25 @@ class RoomEventRepository(
 
     override suspend fun addEvents(events: List<CalendarEvent>): List<CalendarEvent> {
         val valid = events.mapNotNull { event ->
-            val trimmedTitle = event.title.trim()
-            if (trimmedTitle.isEmpty() || event.dateKey.value.isBlank()) {
-                null
-            } else {
-                val createdAt = if (event.createdAtMillis > 0L) event.createdAtMillis else clock.nowMillis()
-                CalendarEventEntity(
-                    id = 0L,
-                    title = trimmedTitle,
-                    dateKey = event.dateKey.value,
-                    reminderTimeMinutes = event.reminderTime?.minutesOfDay,
-                    locationLat = event.location?.point?.lat,
-                    locationLng = event.location?.point?.lng,
-                    locationLabel = event.location?.sanitizedLabel,
-                    createdAt = createdAt,
-                )
-            }
+            val cleanDraft = event.toDraft().sanitized() ?: return@mapNotNull null
+            if (cleanDraft.dateKey.value.isBlank()) return@mapNotNull null
+            val createdAt = if (event.createdAtMillis > 0L) event.createdAtMillis else clock.nowMillis()
+            val normalizedEvent = CalendarEvent(
+                id = EventId.UNASSIGNED,
+                title = cleanDraft.title,
+                dateKey = cleanDraft.dateKey,
+                endDateKey = cleanDraft.endDateKey,
+                isAllDay = cleanDraft.isAllDay,
+                timeRange = cleanDraft.timeRange,
+                description = cleanDraft.description,
+                recurrence = cleanDraft.recurrence,
+                colorTag = cleanDraft.colorTag,
+                details = cleanDraft.details,
+                reminderTime = cleanDraft.reminderTime,
+                location = cleanDraft.location,
+                createdAtMillis = createdAt,
+            )
+            CalendarEventMapper.toEntity(normalizedEvent)
         }
         if (valid.isEmpty()) return emptyList()
         val ids = eventDao.insertEvents(valid)

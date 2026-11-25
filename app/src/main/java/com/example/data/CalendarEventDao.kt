@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface CalendarEventDao {
-    @Query("SELECT * FROM calendar_events ORDER BY dateKey ASC, createdAt ASC")
+    @Query("SELECT * FROM calendar_events ORDER BY dateKey ASC, isAllDay DESC, startTimeMinutes ASC, createdAt ASC")
     fun getAllEvents(): Flow<List<CalendarEventEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -29,6 +29,12 @@ interface CalendarEventDao {
         locationLat: Double?,
         locationLng: Double?,
         locationLabel: String?,
+    )
+
+    @Query("UPDATE calendar_events SET taskCompleted = :completed WHERE id = :eventId")
+    suspend fun updateTaskCompleted(
+        eventId: Long,
+        completed: Boolean,
     )
 
     @Query("SELECT * FROM calendar_events WHERE reminderTimeMinutes IS NOT NULL")

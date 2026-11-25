@@ -1,12 +1,19 @@
 package com.example.domain.service
 
 import com.example.domain.model.CalendarEvent
+import com.example.domain.model.EventColorTag
 import com.example.domain.model.EventId
 import com.example.domain.model.EventLocation
+import com.example.domain.model.EventRecurrence
+import com.example.domain.model.EventTimeRange
+import com.example.domain.model.EventTypeDetails
 import com.example.domain.model.GeoPoint
 import com.example.domain.model.Note
 import com.example.domain.model.NoteId
 import com.example.domain.model.ReminderTime
+import com.example.domain.model.TaskPriority
+import com.example.domain.model.TimeOfDay
+import com.example.domain.model.TransportMode
 import com.example.domain.port.ClockProvider
 
 data class DemoDataset(
@@ -26,7 +33,19 @@ class DemoDataFactory(
                 id = EventId.UNASSIGNED,
                 title = "Prezentacja dema architektury MVC",
                 dateKey = baseDate,
-                reminderTime = ReminderTime.fromHourMinute(10, 0),
+                isAllDay = false,
+                timeRange = EventTimeRange(
+                    start = TimeOfDay.fromHourMinute(10, 0),
+                    end = TimeOfDay.fromHourMinute(11, 30),
+                ),
+                description = "Omówienie rozdzielenia Model–View–Controller i zasad SOLID z zespołem.",
+                recurrence = EventRecurrence.NONE,
+                colorTag = EventColorTag.PINE,
+                details = EventTypeDetails.StandardEvent(
+                    guests = listOf("Anna Kowalska", "Marek Nowak"),
+                    meetingLink = "https://meet.google.com/abc-defg-hij",
+                ),
+                reminderTime = ReminderTime.fromHourMinute(9, 45),
                 location = EventLocation(
                     point = requireNotNull(GeoPoint.createOrNull(52.23195, 21.00672)),
                     label = "Warszawa, Pałac Kultury i Nauki",
@@ -37,7 +56,24 @@ class DemoDataFactory(
                 id = EventId.UNASSIGNED,
                 title = "Przegląd sprintu i testy odbiorcze",
                 dateKey = baseDate.plusDays(1),
-                reminderTime = ReminderTime.fromHourMinute(14, 30),
+                isAllDay = false,
+                timeRange = EventTimeRange(
+                    start = TimeOfDay.fromHourMinute(14, 0),
+                    end = TimeOfDay.fromHourMinute(15, 0),
+                ),
+                description = "Zamknięcie zaległych zgłoszeń i weryfikacja migracji bazy Room.",
+                recurrence = EventRecurrence.NONE,
+                colorTag = EventColorTag.COBALT,
+                details = EventTypeDetails.Task(
+                    priority = TaskPriority.HIGH,
+                    isCompleted = false,
+                    checklist = listOf(
+                        "Uruchomić testy jednostkowe",
+                        "Zweryfikować eksport ICS i CSV",
+                        "Sprawdzić ciemny motyw",
+                    ),
+                ),
+                reminderTime = ReminderTime.fromHourMinute(13, 30),
                 location = EventLocation(
                     point = requireNotNull(GeoPoint.createOrNull(50.06194, 19.93685)),
                     label = "Kraków, Rynek Główny",
@@ -46,9 +82,18 @@ class DemoDataFactory(
             ),
             CalendarEvent(
                 id = EventId.UNASSIGNED,
-                title = "Warsztaty czystego kodu SOLID",
+                title = "Urodziny Kasi",
                 dateKey = baseDate.plusDays(3),
-                reminderTime = ReminderTime.fromHourMinute(9, 15),
+                isAllDay = true,
+                description = "Kameralna kolacja urodzinowa w centrum.",
+                recurrence = EventRecurrence.YEARLY,
+                colorTag = EventColorTag.AMBER,
+                details = EventTypeDetails.Birthday(
+                    celebrantName = "Kasia Wiśniewska",
+                    birthYear = 1995,
+                    giftIdea = "Album fotograficzny i kawa ziarnista",
+                ),
+                reminderTime = ReminderTime.fromHourMinute(9, 0),
                 location = EventLocation(
                     point = requireNotNull(GeoPoint.createOrNull(51.10929, 17.03208)),
                     label = "Wrocław, Rynek",
@@ -57,9 +102,22 @@ class DemoDataFactory(
             ),
             CalendarEvent(
                 id = EventId.UNASSIGNED,
-                title = "Spotkanie z klientem — wdrożenie",
-                dateKey = baseDate.plusDays(6),
-                reminderTime = ReminderTime.fromHourMinute(11, 0),
+                title = "Wizyta kontrolna — Stomatolog",
+                dateKey = baseDate.plusDays(5),
+                isAllDay = false,
+                timeRange = EventTimeRange(
+                    start = TimeOfDay.fromHourMinute(11, 0),
+                    end = TimeOfDay.fromHourMinute(11, 45),
+                ),
+                description = "Coroczny przegląd i higienizacja.",
+                recurrence = EventRecurrence.NONE,
+                colorTag = EventColorTag.TERRACOTTA,
+                details = EventTypeDetails.Appointment(
+                    specialistName = "lek. dent. Piotr Zieliński",
+                    contactPhone = "+48 58 301 44 20",
+                    preparationNotes = "Zabrać dowód osobisty i zdjęcie pantomograficzne.",
+                ),
+                reminderTime = ReminderTime.fromHourMinute(10, 0),
                 location = EventLocation(
                     point = requireNotNull(GeoPoint.createOrNull(54.35202, 18.64663)),
                     label = "Gdańsk, Długi Targ",
@@ -68,9 +126,23 @@ class DemoDataFactory(
             ),
             CalendarEvent(
                 id = EventId.UNASSIGNED,
-                title = "Eksport kalendarza i archiwizacja",
-                dateKey = baseDate.plusDays(9),
-                reminderTime = null,
+                title = "Wyjazd służbowy — Konferencja Kotlin",
+                dateKey = baseDate.plusDays(8),
+                endDateKey = baseDate.plusDays(10),
+                isAllDay = true,
+                description = "Trzydniowa konferencja z warsztatami Jetpack Compose.",
+                recurrence = EventRecurrence.NONE,
+                colorTag = EventColorTag.PLUM,
+                details = EventTypeDetails.Trip(
+                    transportMode = TransportMode.TRAIN,
+                    bookingReference = "PKP-IC-84219",
+                    packingChecklist = listOf(
+                        "Laptop i ładowarka USB-C",
+                        "Bilet w telefonie",
+                        "Identyfikator uczestnika",
+                    ),
+                ),
+                reminderTime = ReminderTime.fromHourMinute(7, 30),
                 location = null,
                 createdAtMillis = now + 4L,
             ),
@@ -80,7 +152,7 @@ class DemoDataFactory(
             Note(
                 id = NoteId.UNASSIGNED,
                 title = "Scenariusz prezentacji dema",
-                content = "1. Pokazać widok miesiąca i filtrowanie dnia.\n" +
+                content = "1. Pokazać widok miesiąca, kolorowe kropki i filtrowanie typów.\n" +
                     "2. Przejść na zakładkę Mapa i kliknąć pinezkę wydarzenia.\n" +
                     "3. Wyeksportować wydarzenia do pliku .ics lub .csv.",
                 createdAtMillis = now + 30L,
@@ -113,9 +185,9 @@ class DemoDataFactory(
         private val DEMO_EVENT_TITLES = setOf(
             "Prezentacja dema architektury MVC",
             "Przegląd sprintu i testy odbiorcze",
-            "Warsztaty czystego kodu SOLID",
-            "Spotkanie z klientem — wdrożenie",
-            "Eksport kalendarza i archiwizacja",
+            "Urodziny Kasi",
+            "Wizyta kontrolna — Stomatolog",
+            "Wyjazd służbowy — Konferencja Kotlin",
         )
 
         private val DEMO_NOTE_TITLES = setOf(

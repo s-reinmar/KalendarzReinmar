@@ -64,6 +64,14 @@ internal fun SelectedEventMapCard(
     modifier: Modifier = Modifier,
 ) {
     val locationSummary = event.location?.formatSummary()
+    val palette = com.example.feature.calendar.CalendarEntryVisuals.palette(event.colorTag)
+    val scheduleSummary = buildString {
+        append(PolishDateFormatter.formatDateKeyDisplay(event.dateKey))
+        if (!event.isAllDay && event.timeRange != null) {
+            append(" • ")
+            append(event.timeRange.formatDisplay())
+        }
+    }
 
     Surface(
         shape = RoundedCornerShape(20.dp),
@@ -86,6 +94,20 @@ internal fun SelectedEventMapCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = palette.container,
+                    ) {
+                        Text(
+                            text = stringResource(
+                                com.example.feature.calendar.CalendarEntryVisuals.labelRes(event.entryType)
+                            ),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = palette.onContainer,
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = event.title,
                         style = MaterialTheme.typography.titleMedium,
@@ -94,9 +116,9 @@ internal fun SelectedEventMapCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        text = PolishDateFormatter.formatDateKeyDisplay(event.dateKey),
+                        text = scheduleSummary,
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.secondary,
+                        color = palette.accent,
                     )
                 }
                 IconButton(

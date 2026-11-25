@@ -15,18 +15,18 @@ class LeafletMapController {
         mapReady = false
     }
 
-    internal fun onMapReady() {
-        if (mapReady) return
+    internal fun onMapReady(view: WebView) {
+        if (webView !== view || mapReady) return
         mapReady = true
-        val view = webView ?: return
         val queued = pendingScripts.toList()
         pendingScripts.clear()
         queued.forEach { script ->
-            view.evaluateJavascript(script, null)
+            runCatching { view.evaluateJavascript(script, null) }
         }
     }
 
-    internal fun detach() {
+    internal fun detach(view: WebView? = null) {
+        if (view != null && webView !== view) return
         pendingScripts.clear()
         mapReady = false
         webView = null
@@ -75,8 +75,11 @@ class LeafletMapController {
     private fun runJs(script: String) {
         val view = webView
         if (view != null && mapReady) {
-            view.evaluateJavascript(script, null)
+            runCatching { view.evaluateJavascript(script, null) }
         } else {
+            if (pendingScripts.size >= MAX_PENDING_SCRIPTS) {
+                pendingScripts.removeAt(0)
+            }
             pendingScripts.add(script)
         }
     }
@@ -86,5 +89,6 @@ class LeafletMapController {
     private companion object {
         const val DEFAULT_FOCUS_ZOOM = 14
         const val DEFAULT_USER_ZOOM = 15
+        const val MAX_PENDING_SCRIPTS = 32
     }
 }

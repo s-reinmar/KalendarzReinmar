@@ -118,4 +118,99 @@
     <string name="demo_nothing_to_clear_feedback">Brak danych demo do usunięcia</string>
     <string name="calendar_summary_count">Wydarzenia: %1$d</string>
     <string name="notes_summary_count">Notatki: %1$d</string>
+
+    <!-- Entry types & Google Calendar style creation -->
+    <string name="entry_type_all">Wszystkie</string>
+    <string name="entry_type_event">Wydarzenie</string>
+    <string name="entry_type_task">Zadanie</string>
+    <string name="entry_type_birthday">Urodziny</string>
+    <string name="entry_type_appointment">Wizyta</string>
+    <string name="entry_type_trip">Podróż</string>
+
+    <string name="entry_type_event_subtitle">Spotkanie, termin, goście</string>
+    <string name="entry_type_task_subtitle">Do zrobienia z priorytetem</string>
+    <string name="entry_type_birthday_subtitle">Rocznica urodzin i prezent</string>
+    <string name="entry_type_appointment_subtitle">Lekarz, konsultacja, urząd</string>
+    <string name="entry_type_trip_subtitle">Wyjazd, transport, pakowanie</string>
+
+    <string name="calendar_add_entry_title">Nowy wpis: %1$s</string>
+    <string name="calendar_edit_entry_title">Edytuj: %1$s</string>
+    <string name="entry_form_type_section">Typ wpisu</string>
+    <string name="entry_form_color_section">Kolor etykiety</string>
+    <string name="entry_form_schedule_section">Termin i powtarzanie</string>
+    <string name="entry_form_details_section">Szczegóły</string>
+
+    <string name="entry_color_pine">Sosna</string>
+    <string name="entry_color_cobalt">Kobalt</string>
+    <string name="entry_color_amber">Bursztyn</string>
+    <string name="entry_color_terracotta">Terakota</string>
+    <string name="entry_color_plum">Śliwka</string>
+
+    <string name="entry_all_day_label">Cały dzień</string>
+    <string name="entry_start_date_label">Data rozpoczęcia</string>
+    <string name="entry_end_date_label">Data zakończenia (opcjonalnie)</string>
+    <string name="entry_end_date_same_day">Ten sam dzień</string>
+    <string name="entry_end_date_clear">Wyczyść datę końca</string>
+    <string name="entry_start_time_label">Godzina rozpoczęcia</string>
+    <string name="entry_end_time_label">Godzina zakończenia</string>
+    <string name="entry_select_start_time">Wybierz godzinę rozpoczęcia</string>
+    <string name="entry_select_end_time">Wybierz godzinę zakończenia</string>
+    <string name="entry_description_label">Opis / notatka (opcjonalnie)</string>
+
+    <string name="entry_recurrence_label">Powtarzanie</string>
+    <string name="recurrence_none">Nie powtarzaj</string>
+    <string name="recurrence_daily">Codziennie</string>
+    <string name="recurrence_weekly">Co tydzień</string>
+    <string name="recurrence_monthly">Co miesiąc</string>
+    <string name="recurrence_yearly">Co rok</string>
+
+    <!-- Standard Event specific -->
+    <string name="field_guests_label">Goście / uczestnicy (po przecinku)</string>
+    <string name="field_meeting_link_label">Link do spotkania online (opcjonalnie)</string>
+    <string name="detail_guests_label">Uczestnicy</string>
+    <string name="detail_meeting_link_label">Spotkanie online</string>
+
+    <!-- Task specific -->
+    <string name="field_task_priority_label">Priorytet zadania</string>
+    <string name="priority_low">Niski</string>
+    <string name="priority_medium">Średni</string>
+    <string name="priority_high">Wysoki</string>
+    <string name="field_task_completed_label">Oznacz jako ukończone</string>
+    <string name="field_task_checklist_label">Podzadania (każde w nowej linii)</string>
+    <string name="detail_task_checklist_label">Lista kontrolna</string>
+    <string name="task_status_completed">Ukończone</string>
+    <string name="task_status_pending">Do zrobienia</string>
+    <string name="cd_toggle_task_completed">Przełącz ukończenie zadania</string>
+
+    <!-- Birthday specific -->
+    <string name="field_celebrant_label">Solenizant</string>
+    <string name="field_birth_year_label">Rok urodzenia (opcjonalnie, np. 1995)</string>
+    <string name="field_gift_idea_label">Pomysł na prezent (opcjonalnie)</string>
+    <string name="detail_celebrant_label">Solenizant</string>
+    <string name="detail_turning_age_badge">%1$d. urodziny</string>
+    <string name="detail_birth_year_label">Rok urodzenia</string>
+    <string name="detail_gift_idea_label">Pomysł na prezent</string>
+
+    <!-- Appointment specific -->
+    <string name="field_specialist_label">Specjalista / placówka</string>
+    <string name="field_contact_phone_label">Telefon kontaktowy (opcjonalnie)</string>
+    <string name="field_preparation_label">Przygotowanie / dokumenty (opcjonalnie)</string>
+    <string name="detail_specialist_label">Specjalista / placówka</string>
+    <string name="detail_contact_phone_label">Telefon</string>
+    <string name="detail_preparation_label">Przygotowanie</string>
+
+    <!-- Trip specific -->
+    <string name="field_transport_mode_label">Środek transportu</string>
+    <string name="transport_car">Samochód</string>
+    <string name="transport_train">Pociąg</string>
+    <string name="transport_plane">Samolot</string>
+    <string name="transport_bus">Autobus</string>
+    <string name="transport_other">Inny</string>
+    <string name="field_booking_ref_label">Nr rezerwacji / biletu (opcjonalnie)</string>
+    <string name="field_packing_list_label">Lista do spakowania (każdy element w nowej linii)</string>
+    <string name="detail_booking_ref_label">Rezerwacja / bilet</string>
+    <string name="detail_packing_list_label">Do spakowania</string>
+
+    <string name="detail_description_label">Opis</string>
+    <string name="cd_close_create_menu">Zamknij menu dodawania</string>
 </resources>

@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.R
+import com.example.domain.model.CalendarEntryType
 import com.example.domain.model.CalendarEvent
 import com.example.domain.model.DateKey
 import com.example.domain.service.PolishDateFormatter
@@ -29,9 +30,11 @@ import com.example.ui.theme.AppIcons
 fun CalendarScreen(
     uiState: CalendarUiState,
     onSelectDate: (DateKey?) -> Unit,
+    onSelectTypeFilter: (CalendarEntryType?) -> Unit,
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
     onEventClick: (CalendarEvent) -> Unit,
+    onToggleTaskCompleted: (CalendarEvent) -> Unit,
     onLocationPinClick: (CalendarEvent) -> Unit,
     onReminderClick: (CalendarEvent) -> Unit,
     onEditClick: (CalendarEvent) -> Unit,
@@ -51,7 +54,7 @@ fun CalendarScreen(
                 year = uiState.displayedYear,
                 month = uiState.displayedMonth,
                 cells = uiState.monthCells,
-                eventDates = uiState.eventDates,
+                dayColorDots = uiState.dayColorDots,
                 selectedDateKey = uiState.selectedDateKey,
                 todayDateKey = uiState.todayDateKey,
                 onSelectDate = onSelectDate,
@@ -60,11 +63,20 @@ fun CalendarScreen(
             )
         }
 
+        item(key = "type_filter_row") {
+            EntryTypeFilterRow(
+                activeTypeFilter = uiState.activeTypeFilter,
+                totalCount = uiState.events.size,
+                typeCounts = uiState.entryTypeCounts,
+                onSelectTypeFilter = onSelectTypeFilter,
+            )
+        }
+
         item(key = "events_header") {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 6.dp, bottom = 2.dp),
+                    .padding(top = 2.dp, bottom = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
@@ -97,7 +109,7 @@ fun CalendarScreen(
         if (uiState.visibleEvents.isEmpty()) {
             item(key = "empty_events") {
                 EmptySectionCard(
-                    iconRes = AppIcons.event,
+                    iconRes = uiState.activeTypeFilter?.let(CalendarEntryVisuals::iconRes) ?: AppIcons.event,
                     iconDescription = stringResource(R.string.cd_event_icon),
                     message = if (uiState.selectedDateKey != null) {
                         stringResource(R.string.calendar_empty_events_for_day)
@@ -122,6 +134,7 @@ fun CalendarScreen(
                 EventItemCard(
                     event = event,
                     onEventClick = { onEventClick(event) },
+                    onToggleTaskCompleted = { onToggleTaskCompleted(event) },
                     onLocationPinClick = { onLocationPinClick(event) },
                     onReminderClick = { onReminderClick(event) },
                     onEditClick = { onEditClick(event) },

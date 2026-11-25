@@ -13,21 +13,38 @@ internal class LeafletBridge(
 ) {
     private val mainHandler = Handler(Looper.getMainLooper())
 
+    @Volatile
+    private var active: Boolean = true
+
+    fun deactivate() {
+        active = false
+        mainHandler.removeCallbacksAndMessages(null)
+    }
+
     @JavascriptInterface
     fun onMapReady() {
-        mainHandler.post { onReady() }
+        if (!active) return
+        mainHandler.post {
+            if (active) onReady()
+        }
     }
 
     @JavascriptInterface
     fun onMapClicked(lat: Double, lng: Double) {
+        if (!active) return
         val point = GeoPoint.createOrNull(lat, lng) ?: return
-        mainHandler.post { onMapTap(point) }
+        mainHandler.post {
+            if (active) onMapTap(point)
+        }
     }
 
     @JavascriptInterface
     fun onEventMarkerClicked(eventId: Long) {
+        if (!active) return
         val id = EventId(eventId)
         if (!id.isValid) return
-        mainHandler.post { onMarkerTap(id) }
+        mainHandler.post {
+            if (active) onMarkerTap(id)
+        }
     }
 }

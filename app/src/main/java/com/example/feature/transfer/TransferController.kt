@@ -4,6 +4,8 @@ import com.example.data.transfer.CsvTransferCodec
 import com.example.data.transfer.IcsEventCodec
 import com.example.domain.model.CalendarEvent
 import com.example.domain.model.EventId
+import com.example.domain.model.EventTypeDetails
+import com.example.domain.model.ImportedEvent
 import com.example.domain.model.Note
 import com.example.domain.model.NoteId
 import com.example.domain.model.TransferFeedback
@@ -50,13 +52,7 @@ class TransferController(
                 return@launch
             }
             val inserted = eventRepository.addEvents(
-                parsed.map { item ->
-                    CalendarEvent(
-                        id = EventId.UNASSIGNED,
-                        title = item.title,
-                        dateKey = item.dateKey,
-                    )
-                }
+                parsed.map(::toCalendarEvent)
             )
             if (inserted.isNotEmpty()) {
                 _feedback.emit(TransferFeedback.ImportedEvents(inserted.size))
@@ -92,13 +88,7 @@ class TransferController(
             }
             val insertedEvents = if (parsed.events.isNotEmpty()) {
                 eventRepository.addEvents(
-                    parsed.events.map { item ->
-                        CalendarEvent(
-                            id = EventId.UNASSIGNED,
-                            title = item.title,
-                            dateKey = item.dateKey,
-                        )
-                    }
+                    parsed.events.map(::toCalendarEvent)
                 ).size
             } else {
                 0
@@ -224,4 +214,17 @@ class TransferController(
             )
         }
     }
+
+    private fun toCalendarEvent(item: ImportedEvent): CalendarEvent = CalendarEvent(
+        id = EventId.UNASSIGNED,
+        title = item.title,
+        dateKey = item.dateKey,
+        endDateKey = item.endDateKey,
+        isAllDay = item.isAllDay,
+        timeRange = item.timeRange,
+        description = item.description,
+        recurrence = item.recurrence,
+        colorTag = item.entryType.defaultColorTag,
+        details = EventTypeDetails.defaultFor(item.entryType),
+    )
 }

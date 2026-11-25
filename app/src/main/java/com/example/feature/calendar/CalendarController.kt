@@ -1,9 +1,12 @@
 package com.example.feature.calendar
 
+import com.example.domain.model.CalendarEntryType
 import com.example.domain.model.CalendarEvent
 import com.example.domain.model.DateKey
+import com.example.domain.model.EventDraft
 import com.example.domain.model.EventId
 import com.example.domain.model.EventLocation
+import com.example.domain.model.EventTypeDetails
 import com.example.domain.model.ReminderTime
 import com.example.domain.port.ClockProvider
 import com.example.domain.port.EventRepository
@@ -29,19 +32,22 @@ class CalendarController(
 
     private val displayedMonth = MutableStateFlow(YearMonth(year = today.year, month = today.month))
     private val selectedDateKey = MutableStateFlow<DateKey?>(null)
+    private val activeTypeFilter = MutableStateFlow<CalendarEntryType?>(null)
     private val dialogState = MutableStateFlow<CalendarDialogState>(CalendarDialogState.None)
 
     val uiState: StateFlow<CalendarUiState> = combine(
         eventRepository.observeEvents(),
         displayedMonth,
         selectedDateKey,
+        activeTypeFilter,
         dialogState,
-    ) { events, month, selectedDate, dialog ->
+    ) { events, month, selectedDate, typeFilter, dialog ->
         CalendarUiState(
             events = events,
             displayedYear = month.year,
             displayedMonth = month.month,
             selectedDateKey = selectedDate,
+            activeTypeFilter = typeFilter,
             todayDateKey = todayKey,
             dialog = dialog,
         )
@@ -61,6 +67,12 @@ class CalendarController(
         }
     }
 
+    fun selectTypeFilter(type: CalendarEntryType?) {
+        activeTypeFilter.update { current ->
+            if (type != null && current == type) null else type
+        }
+    }
+
     fun previousMonth() {
         displayedMonth.update(YearMonth::previous)
     }
@@ -69,10 +81,14 @@ class CalendarController(
         displayedMonth.update(YearMonth::next)
     }
 
-    fun openCreateEvent(initialLocation: EventLocation? = null) {
+    fun openCreateEvent(
+        entryType: CalendarEntryType = CalendarEntryType.EVENT,
+        initialLocation: EventLocation? = null,
+    ) {
         val targetDate = selectedDateKey.value ?: todayKey
         dialogState.value = CalendarDialogState.CreateEvent(
             initialDateKey = targetDate,
+            initialEntryType = entryType,
             initialLocation = initialLocation,
         )
     }
@@ -106,20 +122,10 @@ class CalendarController(
         dialogState.value = CalendarDialogState.None
     }
 
-    fun createEvent(
-        title: String,
-        dateKey: DateKey,
-        reminderTime: ReminderTime?,
-        location: EventLocation?,
-    ) {
+    fun createEvent(draft: EventDraft) {
         dialogState.value = CalendarDialogState.None
         scope.launch {
-            val created = eventRepository.addEvent(
-                title = title,
-                dateKey = dateKey,
-                reminderTime = reminderTime,
-                location = location,
-            ) ?: return@launch
+            val created = eventRepository.addEvent(draft) ?: return@launch
             if (created.hasReminder) {
                 reminderPort.schedule(created)
             }
@@ -128,25 +134,27 @@ class CalendarController(
 
     fun updateEvent(
         event: CalendarEvent,
-        title: String,
-        dateKey: DateKey,
-        reminderTime: ReminderTime?,
-        location: EventLocation?,
+        draft: EventDraft,
     ) {
         dialogState.value = CalendarDialogState.None
         scope.launch {
-            val updated = eventRepository.updateEvent(
-                event = event,
-                title = title,
-                dateKey = dateKey,
-                reminderTime = reminderTime,
-                location = location,
-            ) ?: return@launch
+            val updated = eventRepository.updateEvent(event = event, draft = draft) ?: return@launch
             if (updated.hasReminder) {
                 reminderPort.schedule(updated)
             } else {
                 reminderPort.cancel(updated.id)
             }
+        }
+    }
+
+    fun toggleTaskCompletion(event: CalendarEvent) {
+        val taskDetails = event.details as? EventTypeDetails.Task ?: return
+        val nextCompleted = !taskDetails.isCompleted
+        scope.launch {
+            eventRepository.setTaskCompleted(
+                eventId = event.id,
+                completed = nextCompleted,
+            )
         }
     }
 

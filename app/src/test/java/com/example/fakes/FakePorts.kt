@@ -40,20 +40,21 @@ class FakeEventRepository : EventRepository {
     override suspend fun getEventsWithReminders(): List<CalendarEvent> =
         eventsFlow.value.filter { it.hasReminder }
 
-    override suspend fun addEvent(
-        title: String,
-        dateKey: DateKey,
-        reminderTime: ReminderTime?,
-        location: EventLocation?,
-    ): CalendarEvent? {
-        val trimmed = title.trim()
-        if (trimmed.isEmpty()) return null
+    override suspend fun addEvent(draft: com.example.domain.model.EventDraft): CalendarEvent? {
+        val clean = draft.sanitized() ?: return null
         val created = CalendarEvent(
             id = EventId(nextId++),
-            title = trimmed,
-            dateKey = dateKey,
-            reminderTime = reminderTime,
-            location = location,
+            title = clean.title,
+            dateKey = clean.dateKey,
+            endDateKey = clean.endDateKey,
+            isAllDay = clean.isAllDay,
+            timeRange = clean.timeRange,
+            description = clean.description,
+            recurrence = clean.recurrence,
+            colorTag = clean.colorTag,
+            details = clean.details,
+            reminderTime = clean.reminderTime,
+            location = clean.location,
             createdAtMillis = nextId * 1000L,
         )
         eventsFlow.update { (it + created).sortedBy { e -> e.dateKey.value } }
@@ -62,21 +63,37 @@ class FakeEventRepository : EventRepository {
 
     override suspend fun updateEvent(
         event: CalendarEvent,
-        title: String,
-        dateKey: DateKey,
-        reminderTime: ReminderTime?,
-        location: EventLocation?,
+        draft: com.example.domain.model.EventDraft,
     ): CalendarEvent? {
-        val trimmed = title.trim()
-        if (trimmed.isEmpty()) return null
+        val clean = draft.sanitized() ?: return null
         val updated = event.copy(
-            title = trimmed,
-            dateKey = dateKey,
-            reminderTime = reminderTime,
-            location = location,
+            title = clean.title,
+            dateKey = clean.dateKey,
+            endDateKey = clean.endDateKey,
+            isAllDay = clean.isAllDay,
+            timeRange = clean.timeRange,
+            description = clean.description,
+            recurrence = clean.recurrence,
+            colorTag = clean.colorTag,
+            details = clean.details,
+            reminderTime = clean.reminderTime,
+            location = clean.location,
         )
         eventsFlow.update { list -> list.map { if (it.id == event.id) updated else it } }
         return updated
+    }
+
+    override suspend fun setTaskCompleted(eventId: EventId, completed: Boolean) {
+        eventsFlow.update { list ->
+            list.map { event ->
+                val task = event.details as? com.example.domain.model.EventTypeDetails.Task
+                if (event.id == eventId && task != null) {
+                    event.copy(details = task.copy(isCompleted = completed))
+                } else {
+                    event
+                }
+            }
+        }
     }
 
     override suspend fun updateEventReminder(

@@ -1,7 +1,15 @@
 package com.example.feature
 
+import com.example.domain.model.CalendarEntryType
 import com.example.domain.model.DateKey
+import com.example.domain.model.EventColorTag
+import com.example.domain.model.EventDraft
+import com.example.domain.model.EventRecurrence
+import com.example.domain.model.EventTimeRange
+import com.example.domain.model.EventTypeDetails
 import com.example.domain.model.ReminderTime
+import com.example.domain.model.TaskPriority
+import com.example.domain.model.TimeOfDay
 import com.example.fakes.FakeClockProvider
 import com.example.fakes.FakeEventRepository
 import com.example.fakes.FakeReminderPort
@@ -17,6 +25,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -43,10 +52,19 @@ class CalendarControllerTest {
 
             val targetDate = requireNotNull(DateKey.parseOrNull("2026-11-26"))
             controller.createEvent(
-                title = "Spotkanie projektowe",
-                dateKey = targetDate,
-                reminderTime = ReminderTime.fromHourMinute(10, 30),
-                location = null,
+                EventDraft(
+                    title = "Spotkanie projektowe",
+                    dateKey = targetDate,
+                    isAllDay = false,
+                    timeRange = EventTimeRange(
+                        start = TimeOfDay.fromHourMinute(10, 0),
+                        end = TimeOfDay.fromHourMinute(11, 0),
+                    ),
+                    description = "Agenda spotkania",
+                    colorTag = EventColorTag.PINE,
+                    details = EventTypeDetails.StandardEvent(guests = listOf("Anna")),
+                    reminderTime = ReminderTime.fromHourMinute(10, 30),
+                )
             )
             advanceUntilIdle()
 
@@ -56,10 +74,10 @@ class CalendarControllerTest {
             val created = controller.uiState.value.events.first()
             controller.updateEvent(
                 event = created,
-                title = "Spotkanie bez alarmu",
-                dateKey = targetDate,
-                reminderTime = null,
-                location = null,
+                draft = created.toDraft().copy(
+                    title = "Spotkanie bez alarmu",
+                    reminderTime = null,
+                ),
             )
             advanceUntilIdle()
 
@@ -77,7 +95,7 @@ class CalendarControllerTest {
     }
 
     @Test
-    fun dateSelectionTogglesFilterAndMonthNavigationUpdatesDisplayedMonth() = runTest {
+    fun dateSelectionTypeFilterAndTaskCompletionWorkTogether() = runTest {
         val controllerScope = CoroutineScope(coroutineContext + SupervisorJob())
         try {
             val repo = FakeEventRepository()
@@ -94,20 +112,53 @@ class CalendarControllerTest {
 
             val dayA = requireNotNull(DateKey.parseOrNull("2026-11-25"))
             val dayB = requireNotNull(DateKey.parseOrNull("2026-11-26"))
-            controller.createEvent("A", dayA, null, null)
-            controller.createEvent("B", dayB, null, null)
+            controller.createEvent(
+                EventDraft(
+                    title = "Przygotować raport",
+                    dateKey = dayA,
+                    colorTag = EventColorTag.COBALT,
+                    details = EventTypeDetails.Task(priority = TaskPriority.HIGH, isCompleted = false),
+                )
+            )
+            controller.createEvent(
+                EventDraft(
+                    title = "Urodziny Marka",
+                    dateKey = dayB,
+                    recurrence = EventRecurrence.YEARLY,
+                    colorTag = EventColorTag.AMBER,
+                    details = EventTypeDetails.Birthday(celebrantName = "Marek", birthYear = 1990),
+                )
+            )
             advanceUntilIdle()
 
+            // Filter by entry type
+            controller.selectTypeFilter(CalendarEntryType.BIRTHDAY)
+            advanceUntilIdle()
+            assertEquals(1, controller.uiState.value.visibleEvents.size)
+            assertEquals("Urodziny Marka", controller.uiState.value.visibleEvents.first().title)
+
+            // Clear type filter by selecting same chip again
+            controller.selectTypeFilter(CalendarEntryType.BIRTHDAY)
+            advanceUntilIdle()
+            assertNull(controller.uiState.value.activeTypeFilter)
+            assertEquals(2, controller.uiState.value.visibleEvents.size)
+
+            // Toggle task completion
+            val task = controller.uiState.value.events.first { it.entryType == CalendarEntryType.TASK }
+            assertFalse(task.isCompletedTask)
+            controller.toggleTaskCompletion(task)
+            advanceUntilIdle()
+            assertTrue(controller.uiState.value.events.first { it.id == task.id }.isCompletedTask)
+
+            // Date filter and toggle clear
             controller.selectDate(dayA)
             advanceUntilIdle()
             assertEquals(1, controller.uiState.value.visibleEvents.size)
-            assertEquals("A", controller.uiState.value.visibleEvents.first().title)
+            assertEquals("Przygotować raport", controller.uiState.value.visibleEvents.first().title)
 
-            // Clicking same day again clears selection
             controller.selectDate(dayA)
             advanceUntilIdle()
             assertNull(controller.uiState.value.selectedDateKey)
-            assertEquals(2, controller.uiState.value.visibleEvents.size)
 
             controller.nextMonth()
             controller.nextMonth()
@@ -115,9 +166,10 @@ class CalendarControllerTest {
             assertEquals(2027, controller.uiState.value.displayedYear)
             assertEquals(1, controller.uiState.value.displayedMonth)
 
-            controller.openCreateEvent()
+            controller.openCreateEvent(entryType = CalendarEntryType.TRIP)
             advanceUntilIdle()
-            assertTrue(controller.uiState.value.dialog is CalendarDialogState.CreateEvent)
+            val dialog = controller.uiState.value.dialog as? CalendarDialogState.CreateEvent
+            assertEquals(CalendarEntryType.TRIP, dialog?.initialEntryType)
         } finally {
             controllerScope.cancel()
         }

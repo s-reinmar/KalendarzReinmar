@@ -29,18 +29,14 @@ fun CalendarDialogHost(
                 todayDay = todayDay,
                 geocodingService = geocodingService,
                 locationProvider = locationProvider,
+                initialEntryType = dialog.initialEntryType,
                 initialLocation = dialog.initialLocation,
                 onDismiss = controller::dismissDialog,
-                onSave = { title, dateKey, reminderTime, location ->
-                    if (reminderTime != null) {
+                onSave = { draft ->
+                    if (draft.reminderTime != null) {
                         onEnsureNotificationPermission()
                     }
-                    controller.createEvent(
-                        title = title,
-                        dateKey = dateKey,
-                        reminderTime = reminderTime,
-                        location = location,
-                    )
+                    controller.createEvent(draft)
                 },
             )
         }
@@ -53,16 +49,13 @@ fun CalendarDialogHost(
                 locationProvider = locationProvider,
                 existingEvent = dialog.event,
                 onDismiss = controller::dismissDialog,
-                onSave = { title, dateKey, reminderTime, location ->
-                    if (reminderTime != null) {
+                onSave = { draft ->
+                    if (draft.reminderTime != null) {
                         onEnsureNotificationPermission()
                     }
                     controller.updateEvent(
                         event = dialog.event,
-                        title = title,
-                        dateKey = dateKey,
-                        reminderTime = reminderTime,
-                        location = location,
+                        draft = draft,
                     )
                 },
             )
@@ -74,6 +67,7 @@ fun CalendarDialogHost(
                 EventDetailDialog(
                     event = event,
                     onDismiss = controller::dismissDialog,
+                    onToggleTaskCompleted = { controller.toggleTaskCompletion(event) },
                     onEditClick = { controller.openEditEvent(event) },
                     onReminderClick = { controller.openReminderEditor(event) },
                     onShowOnMainMap = {

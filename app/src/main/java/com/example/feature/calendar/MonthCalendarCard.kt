@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import com.example.R
 import com.example.domain.model.CalendarDay
 import com.example.domain.model.DateKey
+import com.example.domain.model.EventColorTag
 import com.example.domain.service.PolishDateFormatter
 
 @Composable
@@ -43,7 +44,7 @@ internal fun MonthCalendarCard(
     year: Int,
     month: Int,
     cells: List<CalendarDay?>,
-    eventDates: Set<DateKey>,
+    dayColorDots: Map<DateKey, List<EventColorTag>>,
     selectedDateKey: DateKey?,
     todayDateKey: DateKey,
     onSelectDate: (DateKey?) -> Unit,
@@ -137,7 +138,7 @@ internal fun MonthCalendarCard(
                                 dateKey = dayKey,
                                 isSelected = dayKey == selectedDateKey,
                                 isToday = dayKey == todayDateKey,
-                                hasEvents = dayKey in eventDates,
+                                colorDots = dayColorDots[dayKey].orEmpty(),
                                 onClick = { onSelectDate(dayKey) },
                                 modifier = Modifier
                                     .weight(1f)
@@ -157,7 +158,7 @@ private fun CalendarDayCell(
     dateKey: DateKey,
     isSelected: Boolean,
     isToday: Boolean,
-    hasEvents: Boolean,
+    colorDots: List<EventColorTag>,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -191,20 +192,26 @@ private fun CalendarDayCell(
                     else -> MaterialTheme.colorScheme.onSurface
                 },
             )
-            if (hasEvents) {
+            if (colorDots.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(2.dp))
-                Box(
-                    modifier = Modifier
-                        .size(5.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (isSelected) {
-                                MaterialTheme.colorScheme.onPrimary
-                            } else {
-                                MaterialTheme.colorScheme.secondary
-                            }
-                        ),
-                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    colorDots.forEach { tag ->
+                        val dotColor = if (isSelected) {
+                            MaterialTheme.colorScheme.onPrimary
+                        } else {
+                            CalendarEntryVisuals.palette(tag).accent
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(5.dp)
+                                .clip(CircleShape)
+                                .background(dotColor),
+                        )
+                    }
+                }
             }
         }
     }

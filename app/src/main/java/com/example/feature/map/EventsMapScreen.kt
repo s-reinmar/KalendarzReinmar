@@ -124,19 +124,27 @@ fun EventsMapScreen(
                 .weight(1f)
                 .padding(bottom = 8.dp),
         ) {
-            LeafletMapView(
-                controller = leafletController,
-                markers = markers,
-                fitBoundsOnMarkersChange = uiState.shouldFitBoundsOnMarkersChange && focusedEventId == null,
-                enableTapSelection = true,
-                isPaused = isPaused,
-                onMapTap = controller::onMapTapped,
-                onMarkerTap = controller::onMarkerTapped,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(RoundedCornerShape(20.dp))
-                    .testTag("events_overview_leaflet_map"),
-            )
+            if (isPaused) {
+                androidx.compose.material3.Surface(
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainerLow,
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.fillMaxSize(),
+                ) {}
+            } else {
+                LeafletMapView(
+                    controller = leafletController,
+                    markers = markers,
+                    fitBoundsOnMarkersChange = uiState.shouldFitBoundsOnMarkersChange && focusedEventId == null,
+                    enableTapSelection = true,
+                    isPaused = false,
+                    onMapTap = controller::onMapTapped,
+                    onMarkerTap = controller::onMarkerTapped,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(20.dp))
+                        .testTag("events_overview_leaflet_map"),
+                )
+            }
 
             MyLocationMapButton(
                 isLocating = uiState.isLocatingUser,

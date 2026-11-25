@@ -14,6 +14,10 @@ object AppIcons {
     @DrawableRes val notes: Int = R.drawable.ic_app_notes
     @DrawableRes val add: Int = R.drawable.ic_app_add
     @DrawableRes val event: Int = R.drawable.ic_app_event
+    @DrawableRes val task: Int = R.drawable.ic_app_task
+    @DrawableRes val birthday: Int = R.drawable.ic_app_birthday
+    @DrawableRes val appointment: Int = R.drawable.ic_app_appointment
+    @DrawableRes val trip: Int = R.drawable.ic_app_trip
     @DrawableRes val noteItem: Int = R.drawable.ic_app_note_item
     @DrawableRes val myLocation: Int = R.drawable.ic_app_my_location
 }

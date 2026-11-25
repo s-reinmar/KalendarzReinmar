@@ -1,7 +1,7 @@
 package com.example.domain.port
 
 import com.example.domain.model.CalendarEvent
-import com.example.domain.model.DateKey
+import com.example.domain.model.EventDraft
 import com.example.domain.model.EventId
 import com.example.domain.model.EventLocation
 import com.example.domain.model.ReminderTime
@@ -12,20 +12,17 @@ interface EventRepository {
 
     suspend fun getEventsWithReminders(): List<CalendarEvent>
 
-    suspend fun addEvent(
-        title: String,
-        dateKey: DateKey,
-        reminderTime: ReminderTime? = null,
-        location: EventLocation? = null,
-    ): CalendarEvent?
+    suspend fun addEvent(draft: EventDraft): CalendarEvent?
 
     suspend fun updateEvent(
         event: CalendarEvent,
-        title: String,
-        dateKey: DateKey,
-        reminderTime: ReminderTime?,
-        location: EventLocation?,
+        draft: EventDraft,
     ): CalendarEvent?
+
+    suspend fun setTaskCompleted(
+        eventId: EventId,
+        completed: Boolean,
+    )
 
     suspend fun updateEventReminder(
         eventId: EventId,
