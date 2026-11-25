@@ -1,0 +1,6 @@
+{
+  "name": "KalendarzReinmar",
+  "description": "Kalendarz wydarzeń i proste notatki",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
