@@ -23,6 +23,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.AlertDialog
@@ -68,6 +70,8 @@ fun CalendarScreen(
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
     onReminderClick: (CalendarEventEntity) -> Unit,
+    onEditClick: (CalendarEventEntity) -> Unit,
+    onDeleteClick: (CalendarEventEntity) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val monthCells = remember(uiState.displayedYear, uiState.displayedMonth) {
@@ -150,6 +154,8 @@ fun CalendarScreen(
                 EventItemCard(
                     event = event,
                     onReminderClick = { onReminderClick(event) },
+                    onEditClick = { onEditClick(event) },
+                    onDeleteClick = { onDeleteClick(event) },
                 )
             }
         }
@@ -318,6 +324,8 @@ private fun MonthCalendarCard(
 private fun EventItemCard(
     event: CalendarEventEntity,
     onReminderClick: () -> Unit,
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit,
 ) {
     Surface(
         shape = RoundedCornerShape(16.dp),
@@ -326,74 +334,111 @@ private fun EventItemCard(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier
             .fillMaxWidth()
+            .clickable { onEditClick() }
             .testTag("event_item_${event.id}"),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier.size(40.dp),
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(contentAlignment = Alignment.Center) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.size(40.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            painter = painterResource(AppIcons.event),
+                            contentDescription = stringResource(R.string.cd_event_icon),
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = event.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = DateUtils.formatDateKeyDisplay(event.dateKey),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
+                    if (event.reminderTimeMinutes != null) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = stringResource(
+                                R.string.reminder_badge,
+                                ReminderScheduler.formatMinutesOfDay(event.reminderTimeMinutes),
+                            ),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+                IconButton(
+                    onClick = onReminderClick,
+                    modifier = Modifier
+                        .minimumInteractiveComponentSize()
+                        .testTag("event_reminder_button_${event.id}"),
+                ) {
                     Icon(
-                        painter = painterResource(AppIcons.event),
-                        contentDescription = stringResource(R.string.cd_event_icon),
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        imageVector = if (event.reminderTimeMinutes != null) {
+                            Icons.Filled.Notifications
+                        } else {
+                            Icons.Outlined.Notifications
+                        },
+                        contentDescription = stringResource(R.string.cd_reminder_button),
+                        tint = if (event.reminderTimeMinutes != null) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
+                }
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 12.dp, end = 8.dp, bottom = 4.dp),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(
+                    onClick = onEditClick,
+                    modifier = Modifier
+                        .minimumInteractiveComponentSize()
+                        .testTag("event_edit_button_${event.id}"),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Edit,
+                        contentDescription = stringResource(R.string.cd_edit_event),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp),
                     )
                 }
-            }
-            Spacer(modifier = Modifier.width(14.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = event.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = DateUtils.formatDateKeyDisplay(event.dateKey),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.secondary,
-                )
-                if (event.reminderTimeMinutes != null) {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = stringResource(
-                            R.string.reminder_badge,
-                            ReminderScheduler.formatMinutesOfDay(event.reminderTimeMinutes),
-                        ),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
+                IconButton(
+                    onClick = onDeleteClick,
+                    modifier = Modifier
+                        .minimumInteractiveComponentSize()
+                        .testTag("event_delete_button_${event.id}"),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Delete,
+                        contentDescription = stringResource(R.string.cd_delete_event),
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(20.dp),
                     )
                 }
-            }
-            IconButton(
-                onClick = onReminderClick,
-                modifier = Modifier
-                    .minimumInteractiveComponentSize()
-                    .testTag("event_reminder_button_${event.id}"),
-            ) {
-                Icon(
-                    imageVector = if (event.reminderTimeMinutes != null) {
-                        Icons.Filled.Notifications
-                    } else {
-                        Icons.Outlined.Notifications
-                    },
-                    contentDescription = stringResource(R.string.cd_reminder_button),
-                    tint = if (event.reminderTimeMinutes != null) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                )
             }
         }
     }
@@ -403,21 +448,36 @@ private fun EventItemCard(
 @Composable
 fun AddEventDialog(
     initialDateKey: String,
+    existingEvent: CalendarEventEntity? = null,
     onDismiss: () -> Unit,
     onSave: (title: String, dateKey: String, reminderTimeMinutes: Int?) -> Unit,
 ) {
-    var title by remember { mutableStateOf("") }
-    var selectedDateKey by remember(initialDateKey) { mutableStateOf(initialDateKey) }
+    var title by remember(existingEvent?.id) { mutableStateOf(existingEvent?.title.orEmpty()) }
+    var selectedDateKey by remember(existingEvent?.id, initialDateKey) {
+        mutableStateOf(existingEvent?.dateKey ?: initialDateKey)
+    }
     var showDatePicker by remember { mutableStateOf(false) }
-    var reminderEnabled by remember { mutableStateOf(false) }
-    var reminderMinutes by remember { mutableIntStateOf(ReminderScheduler.DEFAULT_REMINDER_MINUTES) }
+    var reminderEnabled by remember(existingEvent?.id) {
+        mutableStateOf(existingEvent?.reminderTimeMinutes != null)
+    }
+    var reminderMinutes by remember(existingEvent?.id) {
+        mutableIntStateOf(
+            existingEvent?.reminderTimeMinutes ?: ReminderScheduler.DEFAULT_REMINDER_MINUTES
+        )
+    }
     var showTimePicker by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = stringResource(R.string.calendar_add_event),
+                text = stringResource(
+                    if (existingEvent == null) {
+                        R.string.calendar_add_event
+                    } else {
+                        R.string.calendar_edit_event
+                    }
+                ),
                 style = MaterialTheme.typography.titleLarge,
             )
         },

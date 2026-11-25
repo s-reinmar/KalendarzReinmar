@@ -181,12 +181,68 @@ class ReinmarViewModel(
         }
     }
 
+    fun updateEvent(
+        context: Context,
+        event: CalendarEventEntity,
+        title: String,
+        dateKey: String,
+        reminderTimeMinutes: Int?,
+    ) {
+        val appContext = context.applicationContext
+        viewModelScope.launch {
+            val updated = repository.updateEvent(
+                event = event,
+                title = title,
+                dateKey = dateKey,
+                reminderTimeMinutes = reminderTimeMinutes,
+            )
+            if (!updated) return@launch
+            if (reminderTimeMinutes != null) {
+                ReminderScheduler.scheduleReminder(
+                    context = appContext,
+                    eventId = event.id,
+                    title = title.trim(),
+                    dateKey = dateKey,
+                    reminderTimeMinutes = reminderTimeMinutes,
+                )
+            } else {
+                ReminderScheduler.cancelReminder(
+                    context = appContext,
+                    eventId = event.id,
+                )
+            }
+        }
+    }
+
+    fun deleteEvent(context: Context, eventId: Long) {
+        val appContext = context.applicationContext
+        viewModelScope.launch {
+            ReminderScheduler.cancelReminder(
+                context = appContext,
+                eventId = eventId,
+            )
+            repository.deleteEvent(eventId)
+        }
+    }
+
     private val _transferFeedback = MutableSharedFlow<TransferFeedback>(extraBufferCapacity = 1)
     val transferFeedback: SharedFlow<TransferFeedback> = _transferFeedback.asSharedFlow()
 
     fun addNote(title: String, content: String) {
         viewModelScope.launch {
             repository.addNote(title = title, content = content)
+        }
+    }
+
+    fun updateNote(note: NoteEntity, title: String, content: String) {
+        viewModelScope.launch {
+            repository.updateNote(note = note, title = title, content = content)
+        }
+    }
+
+    fun deleteNote(noteId: Long) {
+        viewModelScope.launch {
+            repository.deleteNote(noteId)
         }
     }
 

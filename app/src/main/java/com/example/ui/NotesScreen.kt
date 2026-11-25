@@ -1,6 +1,7 @@
 package com.example.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,8 +17,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -42,6 +47,8 @@ import com.example.ui.theme.AppIcons
 @Composable
 fun NotesScreen(
     notes: List<NoteEntity>,
+    onEditClick: (NoteEntity) -> Unit,
+    onDeleteClick: (NoteEntity) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -65,14 +72,22 @@ fun NotesScreen(
                 items = notes,
                 key = { it.id },
             ) { note ->
-                NoteItemCard(note = note)
+                NoteItemCard(
+                    note = note,
+                    onEditClick = { onEditClick(note) },
+                    onDeleteClick = { onDeleteClick(note) },
+                )
             }
         }
     }
 }
 
 @Composable
-private fun NoteItemCard(note: NoteEntity) {
+private fun NoteItemCard(
+    note: NoteEntity,
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit,
+) {
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -80,49 +95,87 @@ private fun NoteItemCard(note: NoteEntity) {
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier
             .fillMaxWidth()
+            .clickable { onEditClick() }
             .testTag("note_item_${note.id}"),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.Top,
-        ) {
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                modifier = Modifier.size(40.dp),
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
+                verticalAlignment = Alignment.Top,
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        painter = painterResource(AppIcons.noteItem),
-                        contentDescription = stringResource(R.string.cd_note_icon),
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                        modifier = Modifier.size(20.dp),
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    modifier = Modifier.size(40.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            painter = painterResource(AppIcons.noteItem),
+                            contentDescription = stringResource(R.string.cd_note_icon),
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    if (note.title.isNotEmpty()) {
+                        Text(
+                            text = note.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+                    Text(
+                        text = note.content,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                 }
             }
-            Spacer(modifier = Modifier.width(14.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                if (note.title.isNotEmpty()) {
-                    Text(
-                        text = note.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                }
-                Text(
-                    text = note.content,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 8.dp, bottom = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
                 Text(
                     text = DateUtils.formatTimestamp(note.createdAt),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = onEditClick,
+                        modifier = Modifier
+                            .minimumInteractiveComponentSize()
+                            .testTag("note_edit_button_${note.id}"),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Edit,
+                            contentDescription = stringResource(R.string.cd_edit_note),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                    IconButton(
+                        onClick = onDeleteClick,
+                        modifier = Modifier
+                            .minimumInteractiveComponentSize()
+                            .testTag("note_delete_button_${note.id}"),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Delete,
+                            contentDescription = stringResource(R.string.cd_delete_note),
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                }
             }
         }
     }
@@ -130,17 +183,24 @@ private fun NoteItemCard(note: NoteEntity) {
 
 @Composable
 fun AddNoteDialog(
+    existingNote: NoteEntity? = null,
     onDismiss: () -> Unit,
     onSave: (title: String, content: String) -> Unit,
 ) {
-    var title by remember { mutableStateOf("") }
-    var content by remember { mutableStateOf("") }
+    var title by remember(existingNote?.id) { mutableStateOf(existingNote?.title.orEmpty()) }
+    var content by remember(existingNote?.id) { mutableStateOf(existingNote?.content.orEmpty()) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = stringResource(R.string.notes_add_note),
+                text = stringResource(
+                    if (existingNote == null) {
+                        R.string.notes_add_note
+                    } else {
+                        R.string.notes_edit_note
+                    }
+                ),
                 style = MaterialTheme.typography.titleLarge,
             )
         },

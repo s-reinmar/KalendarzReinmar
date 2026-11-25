@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -37,6 +38,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.minimumInteractiveComponentSize
@@ -59,6 +61,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.R
 import com.example.data.CalendarEventEntity
+import com.example.data.NoteEntity
 import com.example.ui.theme.AppIcons
 import kotlinx.coroutines.launch
 
@@ -79,6 +82,10 @@ fun ReinmarApp(viewModel: ReinmarViewModel) {
     var showAddNoteDialog by rememberSaveable { mutableStateOf(false) }
     var showTransferMenu by remember { mutableStateOf(false) }
     var reminderDialogEvent by remember { mutableStateOf<CalendarEventEntity?>(null) }
+    var editingEvent by remember { mutableStateOf<CalendarEventEntity?>(null) }
+    var deletingEvent by remember { mutableStateOf<CalendarEventEntity?>(null) }
+    var editingNote by remember { mutableStateOf<NoteEntity?>(null) }
+    var deletingNote by remember { mutableStateOf<NoteEntity?>(null) }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -383,10 +390,16 @@ fun ReinmarApp(viewModel: ReinmarViewModel) {
                                     onPreviousMonth = viewModel::previousMonth,
                                     onNextMonth = viewModel::nextMonth,
                                     onReminderClick = { event -> reminderDialogEvent = event },
+                                    onEditClick = { event -> editingEvent = event },
+                                    onDeleteClick = { event -> deletingEvent = event },
                                 )
                             }
                             ReinmarTab.NOTES -> {
-                                NotesScreen(notes = uiState.notes)
+                                NotesScreen(
+                                    notes = uiState.notes,
+                                    onEditClick = { note -> editingNote = note },
+                                    onDeleteClick = { note -> deletingNote = note },
+                                )
                             }
                         }
                     }
@@ -410,6 +423,71 @@ fun ReinmarApp(viewModel: ReinmarViewModel) {
                     reminderTimeMinutes = reminderTimeMinutes,
                 )
                 showAddEventDialog = false
+            },
+        )
+    }
+
+    editingEvent?.let { event ->
+        AddEventDialog(
+            initialDateKey = event.dateKey,
+            existingEvent = event,
+            onDismiss = { editingEvent = null },
+            onSave = { title, dateKey, reminderTimeMinutes ->
+                if (reminderTimeMinutes != null) {
+                    requestNotificationPermissionIfNeeded()
+                }
+                viewModel.updateEvent(
+                    context = context,
+                    event = event,
+                    title = title,
+                    dateKey = dateKey,
+                    reminderTimeMinutes = reminderTimeMinutes,
+                )
+                editingEvent = null
+            },
+        )
+    }
+
+    deletingEvent?.let { event ->
+        AlertDialog(
+            onDismissRequest = { deletingEvent = null },
+            title = {
+                Text(
+                    text = stringResource(R.string.calendar_delete_event_title),
+                    style = MaterialTheme.typography.titleLarge,
+                )
+            },
+            text = {
+                Text(
+                    text = stringResource(R.string.calendar_delete_event_message, event.title),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteEvent(context = context, eventId = event.id)
+                        deletingEvent = null
+                    },
+                    modifier = Modifier
+                        .minimumInteractiveComponentSize()
+                        .testTag("confirm_delete_event_button"),
+                ) {
+                    Text(
+                        text = stringResource(R.string.action_delete),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { deletingEvent = null },
+                    modifier = Modifier
+                        .minimumInteractiveComponentSize()
+                        .testTag("cancel_delete_event_button"),
+                ) {
+                    Text(stringResource(R.string.action_cancel))
+                }
             },
         )
     }
@@ -438,6 +516,61 @@ fun ReinmarApp(viewModel: ReinmarViewModel) {
             onSave = { title, content ->
                 viewModel.addNote(title = title, content = content)
                 showAddNoteDialog = false
+            },
+        )
+    }
+
+    editingNote?.let { note ->
+        AddNoteDialog(
+            existingNote = note,
+            onDismiss = { editingNote = null },
+            onSave = { title, content ->
+                viewModel.updateNote(note = note, title = title, content = content)
+                editingNote = null
+            },
+        )
+    }
+
+    deletingNote?.let { note ->
+        AlertDialog(
+            onDismissRequest = { deletingNote = null },
+            title = {
+                Text(
+                    text = stringResource(R.string.notes_delete_note_title),
+                    style = MaterialTheme.typography.titleLarge,
+                )
+            },
+            text = {
+                Text(
+                    text = stringResource(R.string.notes_delete_note_message),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteNote(note.id)
+                        deletingNote = null
+                    },
+                    modifier = Modifier
+                        .minimumInteractiveComponentSize()
+                        .testTag("confirm_delete_note_button"),
+                ) {
+                    Text(
+                        text = stringResource(R.string.action_delete),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { deletingNote = null },
+                    modifier = Modifier
+                        .minimumInteractiveComponentSize()
+                        .testTag("cancel_delete_note_button"),
+                ) {
+                    Text(stringResource(R.string.action_cancel))
+                }
             },
         )
     }

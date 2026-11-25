@@ -53,4 +53,16 @@
     <string name="reminder_remove">Usuń</string>
     <string name="reminder_permission_denied">Brak zgody na powiadomienia — przypomnienie zapisano, ale powiadomienia są zablokowane</string>
     <string name="cd_reminder_button">Ustaw przypomnienie</string>
+
+    <string name="action_delete">Usuń</string>
+    <string name="calendar_edit_event">Edytuj wydarzenie</string>
+    <string name="calendar_delete_event_title">Usunąć wydarzenie?</string>
+    <string name="calendar_delete_event_message">Wydarzenie „%1$s” oraz jego przypomnienie zostaną usunięte.</string>
+    <string name="notes_edit_note">Edytuj notatkę</string>
+    <string name="notes_delete_note_title">Usunąć notatkę?</string>
+    <string name="notes_delete_note_message">Ta notatka zostanie trwale usunięta.</string>
+    <string name="cd_edit_event">Edytuj wydarzenie</string>
+    <string name="cd_delete_event">Usuń wydarzenie</string>
+    <string name="cd_edit_note">Edytuj notatkę</string>
+    <string name="cd_delete_note">Usuń notatkę</string>
 </resources>

@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -22,4 +23,10 @@ interface CalendarEventDao {
 
     @Query("SELECT * FROM calendar_events WHERE reminderTimeMinutes IS NOT NULL")
     suspend fun getEventsWithReminders(): List<CalendarEventEntity>
+
+    @Update
+    suspend fun updateEvent(event: CalendarEventEntity)
+
+    @Query("DELETE FROM calendar_events WHERE id = :eventId")
+    suspend fun deleteEventById(eventId: Long)
 }

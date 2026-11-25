@@ -29,6 +29,28 @@ class ReinmarRepository(
         eventDao.updateEventReminder(eventId = eventId, reminderTimeMinutes = reminderTimeMinutes)
     }
 
+    suspend fun updateEvent(
+        event: CalendarEventEntity,
+        title: String,
+        dateKey: String,
+        reminderTimeMinutes: Int?,
+    ): Boolean {
+        val trimmedTitle = title.trim()
+        if (trimmedTitle.isEmpty()) return false
+        eventDao.updateEvent(
+            event.copy(
+                title = trimmedTitle,
+                dateKey = dateKey,
+                reminderTimeMinutes = reminderTimeMinutes,
+            )
+        )
+        return true
+    }
+
+    suspend fun deleteEvent(eventId: Long) {
+        eventDao.deleteEventById(eventId)
+    }
+
     suspend fun addNote(title: String, content: String) {
         val trimmedTitle = title.trim()
         val trimmedContent = content.trim()
@@ -39,6 +61,21 @@ class ReinmarRepository(
                 content = trimmedContent,
             )
         )
+    }
+
+    suspend fun updateNote(note: NoteEntity, title: String, content: String) {
+        val trimmedContent = content.trim()
+        if (trimmedContent.isEmpty()) return
+        noteDao.updateNote(
+            note.copy(
+                title = title.trim(),
+                content = trimmedContent,
+            )
+        )
+    }
+
+    suspend fun deleteNote(noteId: Long) {
+        noteDao.deleteNoteById(noteId)
     }
 
     suspend fun addEvents(events: List<CalendarEventEntity>): Int {
