@@ -8,5 +8,6 @@ data class CalendarEventEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0L,
     val title: String,
     val dateKey: String,
+    val reminderTimeMinutes: Int? = null,
     val createdAt: Long = System.currentTimeMillis(),
 )

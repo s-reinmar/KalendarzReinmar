@@ -1,5 +1,8 @@
 package com.example.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -42,6 +45,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -51,9 +55,12 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.R
+import com.example.data.CalendarEventEntity
 import com.example.ui.theme.AppIcons
+import kotlinx.coroutines.launch
 
 enum class ReinmarTab {
     CALENDAR,
@@ -64,12 +71,38 @@ enum class ReinmarTab {
 @Composable
 fun ReinmarApp(viewModel: ReinmarViewModel) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var currentTab by rememberSaveable { mutableStateOf(ReinmarTab.CALENDAR) }
     var showAddEventDialog by rememberSaveable { mutableStateOf(false) }
     var showAddNoteDialog by rememberSaveable { mutableStateOf(false) }
     var showTransferMenu by remember { mutableStateOf(false) }
+    var reminderDialogEvent by remember { mutableStateOf<CalendarEventEntity?>(null) }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (!granted) {
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar(
+                    context.getString(R.string.reminder_permission_denied),
+                )
+            }
+        }
+    }
+
+    fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val granted = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS,
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!granted) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
 
     val importIcsLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
@@ -349,6 +382,7 @@ fun ReinmarApp(viewModel: ReinmarViewModel) {
                                     onSelectDate = viewModel::selectDate,
                                     onPreviousMonth = viewModel::previousMonth,
                                     onNextMonth = viewModel::nextMonth,
+                                    onReminderClick = { event -> reminderDialogEvent = event },
                                 )
                             }
                             ReinmarTab.NOTES -> {
@@ -365,9 +399,35 @@ fun ReinmarApp(viewModel: ReinmarViewModel) {
         AddEventDialog(
             initialDateKey = uiState.selectedDateKey ?: uiState.todayDateKey,
             onDismiss = { showAddEventDialog = false },
-            onSave = { title, dateKey ->
-                viewModel.addEvent(title = title, dateKey = dateKey)
+            onSave = { title, dateKey, reminderTimeMinutes ->
+                if (reminderTimeMinutes != null) {
+                    requestNotificationPermissionIfNeeded()
+                }
+                viewModel.addEvent(
+                    context = context,
+                    title = title,
+                    dateKey = dateKey,
+                    reminderTimeMinutes = reminderTimeMinutes,
+                )
                 showAddEventDialog = false
+            },
+        )
+    }
+
+    reminderDialogEvent?.let { event ->
+        EventReminderDialog(
+            event = event,
+            onDismiss = { reminderDialogEvent = null },
+            onSave = { reminderTimeMinutes ->
+                if (reminderTimeMinutes != null) {
+                    requestNotificationPermissionIfNeeded()
+                }
+                viewModel.updateEventReminder(
+                    context = context,
+                    event = event,
+                    reminderTimeMinutes = reminderTimeMinutes,
+                )
+                reminderDialogEvent = null
             },
         )
     }

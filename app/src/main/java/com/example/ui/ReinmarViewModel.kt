@@ -1,6 +1,7 @@
 package com.example.ui
 
 import android.content.ContentResolver
+import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -9,6 +10,7 @@ import com.example.data.CalendarEventEntity
 import com.example.data.NoteEntity
 import com.example.data.ReinmarRepository
 import com.example.data.TransferFormats
+import com.example.reminder.ReminderScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -126,9 +128,56 @@ class ReinmarViewModel(
         }
     }
 
-    fun addEvent(title: String, dateKey: String) {
+    fun addEvent(
+        context: Context,
+        title: String,
+        dateKey: String,
+        reminderTimeMinutes: Int? = null,
+    ) {
+        val appContext = context.applicationContext
         viewModelScope.launch {
-            repository.addEvent(title = title, dateKey = dateKey)
+            val insertedId = repository.addEvent(
+                title = title,
+                dateKey = dateKey,
+                reminderTimeMinutes = reminderTimeMinutes,
+            )
+            if (insertedId != null && reminderTimeMinutes != null) {
+                ReminderScheduler.scheduleReminder(
+                    context = appContext,
+                    eventId = insertedId,
+                    title = title.trim(),
+                    dateKey = dateKey,
+                    reminderTimeMinutes = reminderTimeMinutes,
+                )
+            }
+        }
+    }
+
+    fun updateEventReminder(
+        context: Context,
+        event: CalendarEventEntity,
+        reminderTimeMinutes: Int?,
+    ) {
+        val appContext = context.applicationContext
+        viewModelScope.launch {
+            repository.updateEventReminder(
+                eventId = event.id,
+                reminderTimeMinutes = reminderTimeMinutes,
+            )
+            if (reminderTimeMinutes != null) {
+                ReminderScheduler.scheduleReminder(
+                    context = appContext,
+                    eventId = event.id,
+                    title = event.title,
+                    dateKey = event.dateKey,
+                    reminderTimeMinutes = reminderTimeMinutes,
+                )
+            } else {
+                ReminderScheduler.cancelReminder(
+                    context = appContext,
+                    eventId = event.id,
+                )
+            }
         }
     }
 

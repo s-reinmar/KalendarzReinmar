@@ -42,4 +42,15 @@
     <string name="transfer_exported_notes">Wyeksportowano notatek: %1$d</string>
     <string name="transfer_nothing_to_import">Nie znaleziono poprawnych danych do importu</string>
     <string name="transfer_error">Błąd podczas operacji na pliku</string>
+
+    <string name="reminder_channel_name">Przypomnienia o wydarzeniach</string>
+    <string name="reminder_channel_description">Powiadomienia o zaplanowanych wydarzeniach w kalendarzu</string>
+    <string name="reminder_toggle_label">Przypomnienie</string>
+    <string name="reminder_time_label">Godzina przypomnienia</string>
+    <string name="reminder_select_time">Wybierz godzinę</string>
+    <string name="reminder_badge">Przypomnienie: %1$s</string>
+    <string name="reminder_dialog_title">Ustaw przypomnienie</string>
+    <string name="reminder_remove">Usuń</string>
+    <string name="reminder_permission_denied">Brak zgody na powiadomienia — przypomnienie zapisano, ale powiadomienia są zablokowane</string>
+    <string name="cd_reminder_button">Ustaw przypomnienie</string>
 </resources>

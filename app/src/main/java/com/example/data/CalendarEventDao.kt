@@ -12,8 +12,14 @@ interface CalendarEventDao {
     fun getAllEvents(): Flow<List<CalendarEventEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertEvent(event: CalendarEventEntity)
+    suspend fun insertEvent(event: CalendarEventEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEvents(events: List<CalendarEventEntity>)
+
+    @Query("UPDATE calendar_events SET reminderTimeMinutes = :reminderTimeMinutes WHERE id = :eventId")
+    suspend fun updateEventReminder(eventId: Long, reminderTimeMinutes: Int?)
+
+    @Query("SELECT * FROM calendar_events WHERE reminderTimeMinutes IS NOT NULL")
+    suspend fun getEventsWithReminders(): List<CalendarEventEntity>
 }

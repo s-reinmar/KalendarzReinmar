@@ -9,15 +9,24 @@ class ReinmarRepository(
     val events: Flow<List<CalendarEventEntity>> = eventDao.getAllEvents()
     val notes: Flow<List<NoteEntity>> = noteDao.getAllNotes()
 
-    suspend fun addEvent(title: String, dateKey: String) {
+    suspend fun addEvent(
+        title: String,
+        dateKey: String,
+        reminderTimeMinutes: Int? = null,
+    ): Long? {
         val trimmedTitle = title.trim()
-        if (trimmedTitle.isEmpty()) return
-        eventDao.insertEvent(
+        if (trimmedTitle.isEmpty()) return null
+        return eventDao.insertEvent(
             CalendarEventEntity(
                 title = trimmedTitle,
                 dateKey = dateKey,
+                reminderTimeMinutes = reminderTimeMinutes,
             )
         )
+    }
+
+    suspend fun updateEventReminder(eventId: Long, reminderTimeMinutes: Int?) {
+        eventDao.updateEventReminder(eventId = eventId, reminderTimeMinutes = reminderTimeMinutes)
     }
 
     suspend fun addNote(title: String, content: String) {

@@ -23,6 +23,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -33,12 +35,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -54,6 +58,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.R
 import com.example.data.CalendarEventEntity
+import com.example.reminder.ReminderScheduler
 import com.example.ui.theme.AppIcons
 
 @Composable
@@ -62,6 +67,7 @@ fun CalendarScreen(
     onSelectDate: (String?) -> Unit,
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
+    onReminderClick: (CalendarEventEntity) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val monthCells = remember(uiState.displayedYear, uiState.displayedMonth) {
@@ -141,7 +147,10 @@ fun CalendarScreen(
                 items = uiState.visibleEvents,
                 key = { it.id },
             ) { event ->
-                EventItemCard(event = event)
+                EventItemCard(
+                    event = event,
+                    onReminderClick = { onReminderClick(event) },
+                )
             }
         }
     }
@@ -306,7 +315,10 @@ private fun MonthCalendarCard(
 }
 
 @Composable
-private fun EventItemCard(event: CalendarEventEntity) {
+private fun EventItemCard(
+    event: CalendarEventEntity,
+    onReminderClick: () -> Unit,
+) {
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -319,7 +331,7 @@ private fun EventItemCard(event: CalendarEventEntity) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Surface(
@@ -351,6 +363,37 @@ private fun EventItemCard(event: CalendarEventEntity) {
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.secondary,
                 )
+                if (event.reminderTimeMinutes != null) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = stringResource(
+                            R.string.reminder_badge,
+                            ReminderScheduler.formatMinutesOfDay(event.reminderTimeMinutes),
+                        ),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+            IconButton(
+                onClick = onReminderClick,
+                modifier = Modifier
+                    .minimumInteractiveComponentSize()
+                    .testTag("event_reminder_button_${event.id}"),
+            ) {
+                Icon(
+                    imageVector = if (event.reminderTimeMinutes != null) {
+                        Icons.Filled.Notifications
+                    } else {
+                        Icons.Outlined.Notifications
+                    },
+                    contentDescription = stringResource(R.string.cd_reminder_button),
+                    tint = if (event.reminderTimeMinutes != null) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
             }
         }
     }
@@ -361,11 +404,14 @@ private fun EventItemCard(event: CalendarEventEntity) {
 fun AddEventDialog(
     initialDateKey: String,
     onDismiss: () -> Unit,
-    onSave: (title: String, dateKey: String) -> Unit,
+    onSave: (title: String, dateKey: String, reminderTimeMinutes: Int?) -> Unit,
 ) {
     var title by remember { mutableStateOf("") }
     var selectedDateKey by remember(initialDateKey) { mutableStateOf(initialDateKey) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var reminderEnabled by remember { mutableStateOf(false) }
+    var reminderMinutes by remember { mutableIntStateOf(ReminderScheduler.DEFAULT_REMINDER_MINUTES) }
+    var showTimePicker by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -423,13 +469,73 @@ fun AddEventDialog(
                         )
                     }
                 }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text = stringResource(R.string.reminder_toggle_label),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Switch(
+                        checked = reminderEnabled,
+                        onCheckedChange = { reminderEnabled = it },
+                        modifier = Modifier.testTag("event_reminder_switch"),
+                    )
+                }
+
+                if (reminderEnabled) {
+                    OutlinedCard(
+                        onClick = { showTimePicker = true },
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .minimumInteractiveComponentSize()
+                            .testTag("event_reminder_time_button"),
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Column {
+                                Text(
+                                    text = stringResource(R.string.reminder_time_label),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = ReminderScheduler.formatMinutesOfDay(reminderMinutes),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.Filled.Notifications,
+                                contentDescription = stringResource(R.string.reminder_select_time),
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
             TextButton(
                 onClick = {
                     if (title.trim().isNotEmpty()) {
-                        onSave(title, selectedDateKey)
+                        onSave(
+                            title,
+                            selectedDateKey,
+                            if (reminderEnabled) reminderMinutes else null,
+                        )
                     }
                 },
                 enabled = title.trim().isNotEmpty(),
@@ -486,6 +592,17 @@ fun AddEventDialog(
         ) {
             DatePicker(state = datePickerState)
         }
+    }
+
+    if (showTimePicker) {
+        ReminderTimePickerDialog(
+            initialMinutes = reminderMinutes,
+            onDismiss = { showTimePicker = false },
+            onConfirm = { pickedMinutes ->
+                reminderMinutes = pickedMinutes
+                showTimePicker = false
+            },
+        )
     }
 }
 

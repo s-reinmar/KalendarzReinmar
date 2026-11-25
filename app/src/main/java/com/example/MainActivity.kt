@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.AppDatabase
 import com.example.data.ReinmarRepository
+import com.example.reminder.ReminderScheduler
 import com.example.ui.ReinmarApp
 import com.example.ui.ReinmarViewModel
 import com.example.ui.theme.KalendarzReinmarTheme
@@ -15,6 +16,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        ReminderScheduler.ensureNotificationChannel(applicationContext)
 
         val database = AppDatabase.getInstance(applicationContext)
         val repository = ReinmarRepository(
