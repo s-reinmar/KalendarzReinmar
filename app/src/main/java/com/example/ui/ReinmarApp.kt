@@ -67,6 +67,7 @@ import kotlinx.coroutines.launch
 
 enum class ReinmarTab {
     CALENDAR,
+    MAP,
     NOTES,
 }
 
@@ -77,15 +78,32 @@ fun ReinmarApp(viewModel: ReinmarViewModel) {
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val pendingOpenEventId by viewModel.pendingOpenEventId.collectAsStateWithLifecycle()
     var currentTab by rememberSaveable { mutableStateOf(ReinmarTab.CALENDAR) }
     var showAddEventDialog by rememberSaveable { mutableStateOf(false) }
+    var addEventInitialLocation by remember { mutableStateOf<EventLocation?>(null) }
     var showAddNoteDialog by rememberSaveable { mutableStateOf(false) }
     var showTransferMenu by remember { mutableStateOf(false) }
+    var detailEventId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var mapFocusedEventId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var quickLocationEvent by remember { mutableStateOf<CalendarEventEntity?>(null) }
     var reminderDialogEvent by remember { mutableStateOf<CalendarEventEntity?>(null) }
     var editingEvent by remember { mutableStateOf<CalendarEventEntity?>(null) }
     var deletingEvent by remember { mutableStateOf<CalendarEventEntity?>(null) }
     var editingNote by remember { mutableStateOf<NoteEntity?>(null) }
     var deletingNote by remember { mutableStateOf<NoteEntity?>(null) }
+
+    val detailEvent = remember(uiState.events, detailEventId) {
+        detailEventId?.let { id -> uiState.events.firstOrNull { it.id == id } }
+    }
+
+    LaunchedEffect(pendingOpenEventId, uiState.events) {
+        val targetId = pendingOpenEventId
+        if (targetId != null && uiState.events.any { it.id == targetId }) {
+            detailEventId = targetId
+            viewModel.consumePendingOpenEventDetails()
+        }
+    }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -213,6 +231,19 @@ fun ReinmarApp(viewModel: ReinmarViewModel) {
                         modifier = Modifier.testTag("nav_tab_calendar"),
                     )
                     NavigationRailItem(
+                        selected = currentTab == ReinmarTab.MAP,
+                        onClick = { currentTab = ReinmarTab.MAP },
+                        icon = {
+                            Icon(
+                                painter = painterResource(AppIcons.map),
+                                contentDescription = stringResource(R.string.cd_map_icon),
+                                modifier = Modifier.size(22.dp),
+                            )
+                        },
+                        label = { Text(stringResource(R.string.nav_map)) },
+                        modifier = Modifier.testTag("nav_tab_map"),
+                    )
+                    NavigationRailItem(
                         selected = currentTab == ReinmarTab.NOTES,
                         onClick = { currentTab = ReinmarTab.NOTES },
                         icon = {
@@ -239,6 +270,7 @@ fun ReinmarApp(viewModel: ReinmarViewModel) {
                             Text(
                                 text = when (currentTab) {
                                     ReinmarTab.CALENDAR -> stringResource(R.string.nav_calendar)
+                                    ReinmarTab.MAP -> stringResource(R.string.nav_map)
                                     ReinmarTab.NOTES -> stringResource(R.string.nav_notes)
                                 },
                                 style = MaterialTheme.typography.headlineMedium,
@@ -328,6 +360,19 @@ fun ReinmarApp(viewModel: ReinmarViewModel) {
                                 modifier = Modifier.testTag("nav_tab_calendar"),
                             )
                             NavigationBarItem(
+                                selected = currentTab == ReinmarTab.MAP,
+                                onClick = { currentTab = ReinmarTab.MAP },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(AppIcons.map),
+                                        contentDescription = stringResource(R.string.cd_map_icon),
+                                        modifier = Modifier.size(22.dp),
+                                    )
+                                },
+                                label = { Text(stringResource(R.string.nav_map)) },
+                                modifier = Modifier.testTag("nav_tab_map"),
+                            )
+                            NavigationBarItem(
                                 selected = currentTab == ReinmarTab.NOTES,
                                 onClick = { currentTab = ReinmarTab.NOTES },
                                 icon = {
@@ -347,7 +392,10 @@ fun ReinmarApp(viewModel: ReinmarViewModel) {
                     FloatingActionButton(
                         onClick = {
                             when (currentTab) {
-                                ReinmarTab.CALENDAR -> showAddEventDialog = true
+                                ReinmarTab.CALENDAR, ReinmarTab.MAP -> {
+                                    addEventInitialLocation = null
+                                    showAddEventDialog = true
+                                }
                                 ReinmarTab.NOTES -> showAddNoteDialog = true
                             }
                         },
@@ -355,7 +403,7 @@ fun ReinmarApp(viewModel: ReinmarViewModel) {
                         contentColor = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.testTag(
                             when (currentTab) {
-                                ReinmarTab.CALENDAR -> "fab_add_event"
+                                ReinmarTab.CALENDAR, ReinmarTab.MAP -> "fab_add_event"
                                 ReinmarTab.NOTES -> "fab_add_note"
                             }
                         ),
@@ -363,7 +411,7 @@ fun ReinmarApp(viewModel: ReinmarViewModel) {
                         Icon(
                             painter = painterResource(AppIcons.add),
                             contentDescription = when (currentTab) {
-                                ReinmarTab.CALENDAR -> stringResource(R.string.calendar_add_event)
+                                ReinmarTab.CALENDAR, ReinmarTab.MAP -> stringResource(R.string.calendar_add_event)
                                 ReinmarTab.NOTES -> stringResource(R.string.notes_add_note)
                             },
                             modifier = Modifier.size(24.dp),
@@ -377,10 +425,12 @@ fun ReinmarApp(viewModel: ReinmarViewModel) {
                         .padding(innerPadding),
                     contentAlignment = Alignment.TopCenter,
                 ) {
+                    val maxContentWidth = if (currentTab == ReinmarTab.MAP) 960.dp else 640.dp
                     Box(
                         modifier = Modifier
+                            .fillMaxHeight()
                             .fillMaxWidth()
-                            .widthIn(max = 640.dp),
+                            .widthIn(max = maxContentWidth),
                     ) {
                         when (currentTab) {
                             ReinmarTab.CALENDAR -> {
@@ -389,9 +439,39 @@ fun ReinmarApp(viewModel: ReinmarViewModel) {
                                     onSelectDate = viewModel::selectDate,
                                     onPreviousMonth = viewModel::previousMonth,
                                     onNextMonth = viewModel::nextMonth,
+                                    onEventClick = { event -> detailEventId = event.id },
+                                    onLocationPinClick = { event ->
+                                        if (event.locationLat != null && event.locationLng != null) {
+                                            detailEventId = event.id
+                                        } else {
+                                            quickLocationEvent = event
+                                        }
+                                    },
                                     onReminderClick = { event -> reminderDialogEvent = event },
                                     onEditClick = { event -> editingEvent = event },
                                     onDeleteClick = { event -> deletingEvent = event },
+                                )
+                            }
+                            ReinmarTab.MAP -> {
+                                EventsMapScreen(
+                                    eventsWithLocation = uiState.eventsWithLocation,
+                                    focusedEventId = mapFocusedEventId,
+                                    onFocusedEventConsumed = { mapFocusedEventId = null },
+                                    onOpenEventDetails = { event -> detailEventId = event.id },
+                                    onAddEventAtLocation = { location ->
+                                        addEventInitialLocation = location
+                                        showAddEventDialog = true
+                                    },
+                                    onShowMessage = { message ->
+                                        coroutineScope.launch {
+                                            snackbarHostState.showSnackbar(message)
+                                        }
+                                    },
+                                    isPaused = detailEvent != null ||
+                                        showAddEventDialog ||
+                                        editingEvent != null ||
+                                        quickLocationEvent != null ||
+                                        reminderDialogEvent != null,
                                 )
                             }
                             ReinmarTab.NOTES -> {
@@ -408,11 +488,57 @@ fun ReinmarApp(viewModel: ReinmarViewModel) {
         }
     }
 
+    quickLocationEvent?.let { event ->
+        MapLocationPickerDialog(
+            initialLocation = if (event.locationLat != null && event.locationLng != null) {
+                EventLocation(
+                    lat = event.locationLat,
+                    lng = event.locationLng,
+                    label = event.locationLabel,
+                )
+            } else {
+                null
+            },
+            onDismiss = { quickLocationEvent = null },
+            onConfirm = { picked ->
+                viewModel.updateEventReminder(
+                    context = context,
+                    event = event,
+                    reminderTimeMinutes = event.reminderTimeMinutes,
+                    location = picked,
+                )
+                quickLocationEvent = null
+            },
+        )
+    }
+
+    detailEvent?.let { event ->
+        EventDetailDialog(
+            event = event,
+            onDismiss = { detailEventId = null },
+            onEditClick = { editingEvent = event },
+            onReminderClick = { reminderDialogEvent = event },
+            onShowOnMainMap = {
+                mapFocusedEventId = event.id
+                detailEventId = null
+                currentTab = ReinmarTab.MAP
+            },
+            onDeleteClick = {
+                deletingEvent = event
+                detailEventId = null
+            },
+        )
+    }
+
     if (showAddEventDialog) {
         AddEventDialog(
             initialDateKey = uiState.selectedDateKey ?: uiState.todayDateKey,
-            onDismiss = { showAddEventDialog = false },
-            onSave = { title, dateKey, reminderTimeMinutes ->
+            initialLocation = addEventInitialLocation,
+            onDismiss = {
+                showAddEventDialog = false
+                addEventInitialLocation = null
+            },
+            onSave = { title, dateKey, reminderTimeMinutes, location ->
                 if (reminderTimeMinutes != null) {
                     requestNotificationPermissionIfNeeded()
                 }
@@ -421,8 +547,10 @@ fun ReinmarApp(viewModel: ReinmarViewModel) {
                     title = title,
                     dateKey = dateKey,
                     reminderTimeMinutes = reminderTimeMinutes,
+                    location = location,
                 )
                 showAddEventDialog = false
+                addEventInitialLocation = null
             },
         )
     }
@@ -432,7 +560,7 @@ fun ReinmarApp(viewModel: ReinmarViewModel) {
             initialDateKey = event.dateKey,
             existingEvent = event,
             onDismiss = { editingEvent = null },
-            onSave = { title, dateKey, reminderTimeMinutes ->
+            onSave = { title, dateKey, reminderTimeMinutes, location ->
                 if (reminderTimeMinutes != null) {
                     requestNotificationPermissionIfNeeded()
                 }
@@ -442,6 +570,7 @@ fun ReinmarApp(viewModel: ReinmarViewModel) {
                     title = title,
                     dateKey = dateKey,
                     reminderTimeMinutes = reminderTimeMinutes,
+                    location = location,
                 )
                 editingEvent = null
             },
@@ -496,7 +625,7 @@ fun ReinmarApp(viewModel: ReinmarViewModel) {
         EventReminderDialog(
             event = event,
             onDismiss = { reminderDialogEvent = null },
-            onSave = { reminderTimeMinutes ->
+            onSave = { reminderTimeMinutes, location ->
                 if (reminderTimeMinutes != null) {
                     requestNotificationPermissionIfNeeded()
                 }
@@ -504,6 +633,7 @@ fun ReinmarApp(viewModel: ReinmarViewModel) {
                     context = context,
                     event = event,
                     reminderTimeMinutes = reminderTimeMinutes,
+                    location = location,
                 )
                 reminderDialogEvent = null
             },

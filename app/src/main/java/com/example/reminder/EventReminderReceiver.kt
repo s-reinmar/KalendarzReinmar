@@ -19,6 +19,7 @@ class EventReminderReceiver : BroadcastReceiver() {
         val eventId = intent.getLongExtra(ReminderScheduler.EXTRA_EVENT_ID, -1L)
         val title = intent.getStringExtra(ReminderScheduler.EXTRA_EVENT_TITLE).orEmpty()
         val dateKey = intent.getStringExtra(ReminderScheduler.EXTRA_EVENT_DATE_KEY).orEmpty()
+        val locationSummary = intent.getStringExtra(ReminderScheduler.EXTRA_EVENT_LOCATION_SUMMARY)
         if (eventId <= 0L || title.isBlank()) return
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -32,7 +33,10 @@ class EventReminderReceiver : BroadcastReceiver() {
         ReminderScheduler.ensureNotificationChannel(context)
 
         val openAppIntent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra(ReminderScheduler.EXTRA_EVENT_ID, eventId)
         }
         val contentPendingIntent = PendingIntent.getActivity(
             context,
@@ -41,21 +45,29 @@ class EventReminderReceiver : BroadcastReceiver() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        val contentText = if (dateKey.isNotBlank()) {
+        val dateText = if (dateKey.isNotBlank()) {
             DateUtils.formatDateKeyDisplay(dateKey)
         } else {
             context.getString(R.string.app_name)
         }
+        val contentText = if (!locationSummary.isNullOrBlank()) {
+            "$dateText • ${context.getString(R.string.location_badge, locationSummary)}"
+        } else {
+            dateText
+        }
 
-        val notification = NotificationCompat.Builder(context, ReminderScheduler.CHANNEL_ID)
+        val builder = NotificationCompat.Builder(context, ReminderScheduler.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_app_event)
             .setContentTitle(title)
             .setContentText(contentText)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setContentIntent(contentPendingIntent)
-            .build()
 
-        NotificationManagerCompat.from(context).notify(eventId.toInt(), notification)
+        if (!locationSummary.isNullOrBlank()) {
+            builder.setStyle(NotificationCompat.BigTextStyle().bigText(contentText))
+        }
+
+        NotificationManagerCompat.from(context).notify(eventId.toInt(), builder.build())
     }
 }

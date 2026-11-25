@@ -58,6 +58,15 @@ data class ReinmarUiState(
         } else {
             events.filter { it.dateKey == selectedDateKey }
         }
+
+    val eventsWithLocation: List<CalendarEventEntity>
+        get() = events.filter { event ->
+            val lat = event.locationLat
+            val lng = event.locationLng
+            lat != null && lng != null &&
+                lat.isFinite() && lng.isFinite() &&
+                lat in -90.0..90.0 && lng in -180.0..180.0
+        }
 }
 
 class ReinmarViewModel(
@@ -97,6 +106,19 @@ class ReinmarViewModel(
         ),
     )
 
+    private val _pendingOpenEventId = MutableStateFlow<Long?>(null)
+    val pendingOpenEventId: StateFlow<Long?> = _pendingOpenEventId
+
+    fun requestOpenEventDetails(eventId: Long) {
+        if (eventId > 0L) {
+            _pendingOpenEventId.value = eventId
+        }
+    }
+
+    fun consumePendingOpenEventDetails() {
+        _pendingOpenEventId.value = null
+    }
+
     fun selectDate(dateKey: String?) {
         calendarControl.update { current ->
             val nextSelection = if (dateKey != null && current.selectedDateKey == dateKey) {
@@ -133,6 +155,7 @@ class ReinmarViewModel(
         title: String,
         dateKey: String,
         reminderTimeMinutes: Int? = null,
+        location: EventLocation? = null,
     ) {
         val appContext = context.applicationContext
         viewModelScope.launch {
@@ -140,6 +163,9 @@ class ReinmarViewModel(
                 title = title,
                 dateKey = dateKey,
                 reminderTimeMinutes = reminderTimeMinutes,
+                locationLat = location?.lat,
+                locationLng = location?.lng,
+                locationLabel = location?.label,
             )
             if (insertedId != null && reminderTimeMinutes != null) {
                 ReminderScheduler.scheduleReminder(
@@ -148,6 +174,9 @@ class ReinmarViewModel(
                     title = title.trim(),
                     dateKey = dateKey,
                     reminderTimeMinutes = reminderTimeMinutes,
+                    locationLat = location?.lat,
+                    locationLng = location?.lng,
+                    locationLabel = location?.label,
                 )
             }
         }
@@ -157,12 +186,16 @@ class ReinmarViewModel(
         context: Context,
         event: CalendarEventEntity,
         reminderTimeMinutes: Int?,
+        location: EventLocation?,
     ) {
         val appContext = context.applicationContext
         viewModelScope.launch {
             repository.updateEventReminder(
                 eventId = event.id,
                 reminderTimeMinutes = reminderTimeMinutes,
+                locationLat = location?.lat,
+                locationLng = location?.lng,
+                locationLabel = location?.label,
             )
             if (reminderTimeMinutes != null) {
                 ReminderScheduler.scheduleReminder(
@@ -171,6 +204,9 @@ class ReinmarViewModel(
                     title = event.title,
                     dateKey = event.dateKey,
                     reminderTimeMinutes = reminderTimeMinutes,
+                    locationLat = location?.lat,
+                    locationLng = location?.lng,
+                    locationLabel = location?.label,
                 )
             } else {
                 ReminderScheduler.cancelReminder(
@@ -187,6 +223,7 @@ class ReinmarViewModel(
         title: String,
         dateKey: String,
         reminderTimeMinutes: Int?,
+        location: EventLocation?,
     ) {
         val appContext = context.applicationContext
         viewModelScope.launch {
@@ -195,6 +232,9 @@ class ReinmarViewModel(
                 title = title,
                 dateKey = dateKey,
                 reminderTimeMinutes = reminderTimeMinutes,
+                locationLat = location?.lat,
+                locationLng = location?.lng,
+                locationLabel = location?.label,
             )
             if (!updated) return@launch
             if (reminderTimeMinutes != null) {
@@ -204,6 +244,9 @@ class ReinmarViewModel(
                     title = title.trim(),
                     dateKey = dateKey,
                     reminderTimeMinutes = reminderTimeMinutes,
+                    locationLat = location?.lat,
+                    locationLng = location?.lng,
+                    locationLabel = location?.label,
                 )
             } else {
                 ReminderScheduler.cancelReminder(

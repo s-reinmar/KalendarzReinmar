@@ -18,13 +18,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.AlertDialog
@@ -69,6 +72,8 @@ fun CalendarScreen(
     onSelectDate: (String?) -> Unit,
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
+    onEventClick: (CalendarEventEntity) -> Unit,
+    onLocationPinClick: (CalendarEventEntity) -> Unit,
     onReminderClick: (CalendarEventEntity) -> Unit,
     onEditClick: (CalendarEventEntity) -> Unit,
     onDeleteClick: (CalendarEventEntity) -> Unit,
@@ -153,6 +158,8 @@ fun CalendarScreen(
             ) { event ->
                 EventItemCard(
                     event = event,
+                    onEventClick = { onEventClick(event) },
+                    onLocationPinClick = { onLocationPinClick(event) },
                     onReminderClick = { onReminderClick(event) },
                     onEditClick = { onEditClick(event) },
                     onDeleteClick = { onDeleteClick(event) },
@@ -323,10 +330,18 @@ private fun MonthCalendarCard(
 @Composable
 private fun EventItemCard(
     event: CalendarEventEntity,
+    onEventClick: () -> Unit,
+    onLocationPinClick: () -> Unit,
     onReminderClick: () -> Unit,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
 ) {
+    val locationSummary = ReminderScheduler.formatLocationSummary(
+        event.locationLat,
+        event.locationLng,
+        event.locationLabel,
+    )
+
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -334,7 +349,7 @@ private fun EventItemCard(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onEditClick() }
+            .clickable { onEventClick() }
             .testTag("event_item_${event.id}"),
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -384,6 +399,27 @@ private fun EventItemCard(
                             color = MaterialTheme.colorScheme.primary,
                         )
                     }
+                    if (locationSummary != null) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.LocationOn,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(14.dp),
+                            )
+                            Text(
+                                text = stringResource(R.string.location_badge, locationSummary),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
                 }
                 IconButton(
                     onClick = onReminderClick,
@@ -413,6 +449,23 @@ private fun EventItemCard(
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                IconButton(
+                    onClick = onLocationPinClick,
+                    modifier = Modifier
+                        .minimumInteractiveComponentSize()
+                        .testTag("event_map_button_${event.id}"),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.LocationOn,
+                        contentDescription = stringResource(R.string.cd_event_location_pin),
+                        tint = if (locationSummary != null) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
                 IconButton(
                     onClick = onEditClick,
                     modifier = Modifier
@@ -449,8 +502,14 @@ private fun EventItemCard(
 fun AddEventDialog(
     initialDateKey: String,
     existingEvent: CalendarEventEntity? = null,
+    initialLocation: EventLocation? = null,
     onDismiss: () -> Unit,
-    onSave: (title: String, dateKey: String, reminderTimeMinutes: Int?) -> Unit,
+    onSave: (
+        title: String,
+        dateKey: String,
+        reminderTimeMinutes: Int?,
+        location: EventLocation?,
+    ) -> Unit,
 ) {
     var title by remember(existingEvent?.id) { mutableStateOf(existingEvent?.title.orEmpty()) }
     var selectedDateKey by remember(existingEvent?.id, initialDateKey) {
@@ -466,6 +525,20 @@ fun AddEventDialog(
         )
     }
     var showTimePicker by remember { mutableStateOf(false) }
+    var selectedLocation by remember(existingEvent?.id, initialLocation) {
+        mutableStateOf(
+            if (existingEvent?.locationLat != null && existingEvent.locationLng != null) {
+                EventLocation(
+                    lat = existingEvent.locationLat,
+                    lng = existingEvent.locationLng,
+                    label = existingEvent.locationLabel,
+                )
+            } else {
+                initialLocation
+            }
+        )
+    }
+    var showMapPicker by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -482,7 +555,10 @@ fun AddEventDialog(
             )
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
@@ -529,6 +605,12 @@ fun AddEventDialog(
                         )
                     }
                 }
+
+                ReminderLocationFieldCard(
+                    location = selectedLocation,
+                    onClick = { showMapPicker = true },
+                    testTag = "event_reminder_location_button",
+                )
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -595,6 +677,7 @@ fun AddEventDialog(
                             title,
                             selectedDateKey,
                             if (reminderEnabled) reminderMinutes else null,
+                            selectedLocation,
                         )
                     }
                 },
@@ -661,6 +744,17 @@ fun AddEventDialog(
             onConfirm = { pickedMinutes ->
                 reminderMinutes = pickedMinutes
                 showTimePicker = false
+            },
+        )
+    }
+
+    if (showMapPicker) {
+        MapLocationPickerDialog(
+            initialLocation = selectedLocation,
+            onDismiss = { showMapPicker = false },
+            onConfirm = { picked ->
+                selectedLocation = picked
+                showMapPicker = false
             },
         )
     }

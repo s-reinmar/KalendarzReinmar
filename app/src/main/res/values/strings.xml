@@ -65,4 +65,46 @@
     <string name="cd_delete_event">Usuń wydarzenie</string>
     <string name="cd_edit_note">Edytuj notatkę</string>
     <string name="cd_delete_note">Usuń notatkę</string>
+
+    <string name="location_field_label">Lokalizacja na mapie</string>
+    <string name="location_not_selected">Wybierz punkt na mapie</string>
+    <string name="location_picker_title">Wybierz lokalizację na mapie</string>
+    <string name="location_picker_hint">Dotknij mapę lub wyszukaj miejsce</string>
+    <string name="location_name_label">Nazwa miejsca (opcjonalnie)</string>
+    <string name="location_coordinates_label">Współrzędne: %1$s</string>
+    <string name="location_remove">Usuń lokalizację</string>
+    <string name="location_badge">Lokalizacja: %1$s</string>
+    <string name="cd_select_location">Wybierz lokalizację na mapie</string>
+
+    <string name="nav_map">Mapa</string>
+    <string name="cd_map_icon">Ikona mapy</string>
+    <string name="map_search_placeholder">Szukaj adresu lub miejsca (OSM)…</string>
+    <string name="map_search_action">Szukaj</string>
+    <string name="map_search_clear">Wyczyść wyszukiwanie</string>
+    <string name="map_search_no_results">Nie znaleziono pasujących miejsc</string>
+    <string name="map_search_error">Nie udało się pobrać wyników z OpenStreetMap</string>
+    <string name="map_empty_banner">Brak wydarzeń z lokalizacją. Dotknij mapę lub przycisk +, aby dodać pierwsze miejsce.</string>
+    <string name="map_events_count">Wydarzenia na mapie: %1$d</string>
+    <string name="map_add_event_here">Dodaj wydarzenie tutaj</string>
+    <string name="map_selected_point">Wybrany punkt: %1$s</string>
+    <string name="map_open_details">Szczegóły</string>
+    <string name="map_show_on_map">Pokaż na mapie</string>
+    <string name="map_fit_all">Pokaż wszystkie pinezki</string>
+
+    <string name="event_detail_title">Szczegóły wydarzenia</string>
+    <string name="event_detail_no_reminder">Brak przypomnienia</string>
+    <string name="event_detail_no_location">Brak przypisanej lokalizacji na mapie</string>
+    <string name="event_detail_add_location">Dodaj lokalizację na mapie</string>
+    <string name="event_detail_close">Zamknij</string>
+    <string name="cd_open_event_map">Otwórz podgląd wydarzenia z mapą</string>
+    <string name="cd_event_location_pin">Lokalizacja wydarzenia na mapie</string>
+    <string name="cd_close_selection">Zamknij podgląd</string>
+    <string name="location_drop_pin">Postaw pinezkę</string>
+    <string name="cd_my_location">Wyśrodkuj na aktualnej lokalizacji</string>
+    <string name="map_my_location_permission_denied">Brak uprawnień do odczytu lokalizacji urządzenia</string>
+    <string name="map_my_location_disabled">Włącz usługi lokalizacji (GPS) w telefonie</string>
+    <string name="map_my_location_unavailable">Nie udało się ustalić aktualnej lokalizacji</string>
+    <string name="map_resolving_address">Pobieranie adresu…</string>
+    <string name="map_renderer_crashed">Widok mapy został zresetowany</string>
+    <string name="map_reload_action">Odśwież mapę</string>
 </resources>

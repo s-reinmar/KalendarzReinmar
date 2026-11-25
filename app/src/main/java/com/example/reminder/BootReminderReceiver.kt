@@ -27,6 +27,9 @@ class BootReminderReceiver : BroadcastReceiver() {
                         title = event.title,
                         dateKey = event.dateKey,
                         reminderTimeMinutes = minutes,
+                        locationLat = event.locationLat,
+                        locationLng = event.locationLng,
+                        locationLabel = event.locationLabel,
                     )
                 }
             } finally {

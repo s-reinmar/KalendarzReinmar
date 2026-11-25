@@ -10,8 +10,10 @@ import com.example.R
  */
 object AppIcons {
     @DrawableRes val calendar: Int = R.drawable.ic_app_calendar
+    @DrawableRes val map: Int = R.drawable.ic_app_map
     @DrawableRes val notes: Int = R.drawable.ic_app_notes
     @DrawableRes val add: Int = R.drawable.ic_app_add
     @DrawableRes val event: Int = R.drawable.ic_app_event
     @DrawableRes val noteItem: Int = R.drawable.ic_app_note_item
+    @DrawableRes val myLocation: Int = R.drawable.ic_app_my_location
 }

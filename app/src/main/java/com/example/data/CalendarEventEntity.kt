@@ -9,5 +9,8 @@ data class CalendarEventEntity(
     val title: String,
     val dateKey: String,
     val reminderTimeMinutes: Int? = null,
+    val locationLat: Double? = null,
+    val locationLng: Double? = null,
+    val locationLabel: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
 )

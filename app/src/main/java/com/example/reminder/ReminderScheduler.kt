@@ -17,7 +17,15 @@ object ReminderScheduler {
     const val EXTRA_EVENT_ID = "extra_event_id"
     const val EXTRA_EVENT_TITLE = "extra_event_title"
     const val EXTRA_EVENT_DATE_KEY = "extra_event_date_key"
+    const val EXTRA_EVENT_LOCATION_SUMMARY = "extra_event_location_summary"
     const val DEFAULT_REMINDER_MINUTES = 9 * 60
+
+    fun formatLocationSummary(lat: Double?, lng: Double?, label: String?): String? {
+        if (lat == null || lng == null || !lat.isFinite() || !lng.isFinite()) return null
+        val coords = String.format(Locale.US, "%.5f, %.5f", lat, lng)
+        val trimmedLabel = label?.trim().orEmpty()
+        return if (trimmedLabel.isNotEmpty()) "$trimmedLabel ($coords)" else coords
+    }
 
     fun ensureNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -61,6 +69,9 @@ object ReminderScheduler {
         title: String,
         dateKey: String,
         reminderTimeMinutes: Int,
+        locationLat: Double? = null,
+        locationLng: Double? = null,
+        locationLabel: String? = null,
     ) {
         ensureNotificationChannel(context)
         val triggerAtMillis = computeTriggerMillis(dateKey, reminderTimeMinutes) ?: return
@@ -70,11 +81,13 @@ object ReminderScheduler {
         }
 
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
+        val locationSummary = formatLocationSummary(locationLat, locationLng, locationLabel)
         val pendingIntent = buildPendingIntent(
             context = context,
             eventId = eventId,
             title = title,
             dateKey = dateKey,
+            locationSummary = locationSummary,
             flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         ) ?: return
 
@@ -103,6 +116,7 @@ object ReminderScheduler {
             eventId = eventId,
             title = "",
             dateKey = "",
+            locationSummary = null,
             flags = PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE,
         ) ?: return
         alarmManager.cancel(pendingIntent)
@@ -114,12 +128,16 @@ object ReminderScheduler {
         eventId: Long,
         title: String,
         dateKey: String,
+        locationSummary: String?,
         flags: Int,
     ): PendingIntent? {
         val intent = Intent(context, EventReminderReceiver::class.java).apply {
             putExtra(EXTRA_EVENT_ID, eventId)
             putExtra(EXTRA_EVENT_TITLE, title)
             putExtra(EXTRA_EVENT_DATE_KEY, dateKey)
+            if (locationSummary != null) {
+                putExtra(EXTRA_EVENT_LOCATION_SUMMARY, locationSummary)
+            }
         }
         return PendingIntent.getBroadcast(
             context,

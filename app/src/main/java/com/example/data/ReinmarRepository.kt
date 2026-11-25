@@ -13,20 +13,50 @@ class ReinmarRepository(
         title: String,
         dateKey: String,
         reminderTimeMinutes: Int? = null,
+        locationLat: Double? = null,
+        locationLng: Double? = null,
+        locationLabel: String? = null,
     ): Long? {
         val trimmedTitle = title.trim()
         if (trimmedTitle.isEmpty()) return null
+        val validCoords = hasValidCoordinates(locationLat, locationLng)
+        val sanitizedLabel = if (validCoords) {
+            locationLabel?.trim()?.takeIf { it.isNotEmpty() }
+        } else {
+            null
+        }
         return eventDao.insertEvent(
             CalendarEventEntity(
                 title = trimmedTitle,
                 dateKey = dateKey,
                 reminderTimeMinutes = reminderTimeMinutes,
+                locationLat = if (validCoords) locationLat else null,
+                locationLng = if (validCoords) locationLng else null,
+                locationLabel = sanitizedLabel,
             )
         )
     }
 
-    suspend fun updateEventReminder(eventId: Long, reminderTimeMinutes: Int?) {
-        eventDao.updateEventReminder(eventId = eventId, reminderTimeMinutes = reminderTimeMinutes)
+    suspend fun updateEventReminder(
+        eventId: Long,
+        reminderTimeMinutes: Int?,
+        locationLat: Double?,
+        locationLng: Double?,
+        locationLabel: String?,
+    ) {
+        val validCoords = hasValidCoordinates(locationLat, locationLng)
+        val sanitizedLabel = if (validCoords) {
+            locationLabel?.trim()?.takeIf { it.isNotEmpty() }
+        } else {
+            null
+        }
+        eventDao.updateEventReminder(
+            eventId = eventId,
+            reminderTimeMinutes = reminderTimeMinutes,
+            locationLat = if (validCoords) locationLat else null,
+            locationLng = if (validCoords) locationLng else null,
+            locationLabel = sanitizedLabel,
+        )
     }
 
     suspend fun updateEvent(
@@ -34,17 +64,35 @@ class ReinmarRepository(
         title: String,
         dateKey: String,
         reminderTimeMinutes: Int?,
+        locationLat: Double?,
+        locationLng: Double?,
+        locationLabel: String?,
     ): Boolean {
         val trimmedTitle = title.trim()
         if (trimmedTitle.isEmpty()) return false
+        val validCoords = hasValidCoordinates(locationLat, locationLng)
+        val sanitizedLabel = if (validCoords) {
+            locationLabel?.trim()?.takeIf { it.isNotEmpty() }
+        } else {
+            null
+        }
         eventDao.updateEvent(
             event.copy(
                 title = trimmedTitle,
                 dateKey = dateKey,
                 reminderTimeMinutes = reminderTimeMinutes,
+                locationLat = if (validCoords) locationLat else null,
+                locationLng = if (validCoords) locationLng else null,
+                locationLabel = sanitizedLabel,
             )
         )
         return true
+    }
+
+    private fun hasValidCoordinates(lat: Double?, lng: Double?): Boolean {
+        return lat != null && lng != null &&
+            lat.isFinite() && lng.isFinite() &&
+            lat in -90.0..90.0 && lng in -180.0..180.0
     }
 
     suspend fun deleteEvent(eventId: Long) {
