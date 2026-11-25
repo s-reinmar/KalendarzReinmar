@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="referrer" content="origin" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #EFECE4;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    #map {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      background: #EFECE4;
+    }
+    #map-status {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      text-align: center;
+      color: #525B56;
+      font-size: 14px;
+      background: #EFECE4;
+      z-index: 1000;
+    }
+    .reinmar-pin-wrap {
+      background: transparent;
+      border: none;
+    }
+    .reinmar-popup-title {
+      font-weight: 600;
+      font-size: 13px;
+      color: #1A1E1C;
+      margin-bottom: 2px;
+    }
+    .reinmar-popup-sub {
+      font-size: 11px;
+      color: #525B56;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="map-status">Ładowanie mapy OpenStreetMap…</div>
+  <script>
+    (function() {
+      var INITIAL_LAT = {{INITIAL_LAT}};
+      var INITIAL_LNG = {{INITIAL_LNG}};
+      var INITIAL_ZOOM = {{INITIAL_ZOOM}};
+      var ENABLE_TAP = {{ENABLE_TAP}};
+
+      var SOURCES = [
+        {
+          css: 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
+          js: 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+        },
+        {
+          css: 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css',
+          js: 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js'
+        },
+        {
+          css: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css',
+          js: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js'
+        }
+      ];
+
+      function hideStatus() {
+        var el = document.getElementById('map-status');
+        if (el) el.style.display = 'none';
+      }
+
+      function showError(msg) {
+        var el = document.getElementById('map-status');
+        if (el) {
+          el.style.display = 'flex';
+          el.textContent = msg;
+        }
+      }
+
+      function loadSource(index) {
+        if (index >= SOURCES.length) {
+          showError('Nie udało się załadować biblioteki mapy Leaflet. Sprawdź połączenie z internetem.');
+          return;
+        }
+        var src = SOURCES[index];
+        var settled = false;
+        var link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = src.css;
+        document.head.appendChild(link);
+
+        var script = document.createElement('script');
+        script.src = src.js;
+        script.async = true;
+
+        var fallbackTimer = setTimeout(function() {
+          if (!settled) {
+            settled = true;
+            if (link.parentNode) link.parentNode.removeChild(link);
+            if (script.parentNode) script.parentNode.removeChild(script);
+            loadSource(index + 1);
+          }
+        }, 5000);
+
+        script.onload = function() {
+          if (settled) return;
+          settled = true;
+          clearTimeout(fallbackTimer);
+          if (typeof L !== 'undefined') {
+            initMap();
+          } else {
+            loadSource(index + 1);
+          }
+        };
+        script.onerror = function() {
+          if (settled) return;
+          settled = true;
+          clearTimeout(fallbackTimer);
+          if (link.parentNode) link.parentNode.removeChild(link);
+          if (script.parentNode) script.parentNode.removeChild(script);
+          loadSource(index + 1);
+        };
+        document.head.appendChild(script);
+      }
+
+      function createSvgPinIcon(fillColor, ringColor, sizeScale) {
+        var w = Math.round(32 * (sizeScale || 1));
+        var h = Math.round(42 * (sizeScale || 1));
+        var svg =
+          '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '" viewBox="0 0 32 42">' +
+            '<ellipse cx="16" cy="39" rx="7" ry="2.6" fill="rgba(0,0,0,0.25)"/>' +
+            '<path d="M16 2C8.82 2 3 7.82 3 15c0 9.5 13 24 13 24s13-14.5 13-24C29 7.82 23.18 2 16 2z" ' +
+              'fill="' + fillColor + '" stroke="#FFFFFF" stroke-width="2.5"/>' +
+            '<circle cx="16" cy="15" r="5.2" fill="' + ringColor + '"/>' +
+          '</svg>';
+        return L.divIcon({
+          className: 'reinmar-pin-wrap',
+          html: svg,
+          iconSize: [w, h],
+          iconAnchor: [Math.round(w / 2), h - 2],
+          popupAnchor: [0, -(h - 6)]
+        });
+      }
+
+      function buildSafePopupNode(title, subtitle) {
+        var wrapper = document.createElement('div');
+        var titleEl = document.createElement('div');
+        titleEl.className = 'reinmar-popup-title';
+        titleEl.textContent = title || '';
+        wrapper.appendChild(titleEl);
+        if (subtitle) {
+          var subEl = document.createElement('div');
+          subEl.className = 'reinmar-popup-sub';
+          subEl.textContent = subtitle;
+          wrapper.appendChild(subEl);
+        }
+        return wrapper;
+      }
+
+      function initMap() {
+        hideStatus();
+
+        var map = L.map('map', {
+          zoomControl: true,
+          attributionControl: true,
+          preferCanvas: true,
+          fadeAnimation: false,
+          zoomAnimation: true
+        }).setView([INITIAL_LAT, INITIAL_LNG], INITIAL_ZOOM);
+
+        var osmLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          keepBuffer: 1,
+          updateWhenIdle: true,
+          updateWhenZooming: false,
+          crossOrigin: false,
+          attribution: '&copy; OpenStreetMap contributors'
+        });
+
+        osmLayer.addTo(map);
+
+        var defaultIcon = createSvgPinIcon('#1B3C33', '#FFFFFF', 1.0);
+        var reminderIcon = createSvgPinIcon('#C85A32', '#FFFFFF', 1.05);
+        var draftIcon = createSvgPinIcon('#C85A32', '#FFF3EC', 1.15);
+
+        var eventMarkerLayer = L.layerGroup().addTo(map);
+        var markerMap = {};
+        var draftMarker = null;
+        var userLocationHalo = null;
+        var userLocationDot = null;
+
+        function notifyPicked(lat, lng) {
+          if (window.ReinmarMapBridge && typeof window.ReinmarMapBridge.onMapClicked === 'function') {
+            window.ReinmarMapBridge.onMapClicked(lat, lng);
+          }
+        }
+
+        function attachDraftMarker(lat, lng) {
+          if (draftMarker) {
+            draftMarker.setLatLng([lat, lng]);
+          } else {
+            draftMarker = L.marker([lat, lng], {
+              icon: draftIcon,
+              draggable: ENABLE_TAP,
+              zIndexOffset: 500
+            }).addTo(map);
+            if (ENABLE_TAP) {
+              draftMarker.on('dragend', function(ev) {
+                var pos = ev.target.getLatLng();
+                notifyPicked(pos.lat, pos.lng);
+              });
+            }
+          }
+        }
+
+        function fitAll() {
+          var latLngs = [];
+          Object.keys(markerMap).forEach(function(key) {
+            latLngs.push(markerMap[key].getLatLng());
+          });
+          if (latLngs.length === 1) {
+            map.setView(latLngs[0], 14);
+          } else if (latLngs.length > 1) {
+            map.fitBounds(L.latLngBounds(latLngs), { padding: [48, 48], maxZoom: 15 });
+          }
+        }
+
+        window.ReinmarMap = {
+          setMarkers: function(items, shouldFit) {
+            eventMarkerLayer.clearLayers();
+            markerMap = {};
+            if (!Array.isArray(items)) return;
+            items.forEach(function(item) {
+              if (typeof item.lat !== 'number' || typeof item.lng !== 'number') return;
+              var icon = item.hasReminder ? reminderIcon : defaultIcon;
+              var marker = L.marker([item.lat, item.lng], { icon: icon });
+              marker.bindPopup(buildSafePopupNode(item.title, item.subtitle));
+              marker.on('click', function() {
+                if (window.ReinmarMapBridge && typeof window.ReinmarMapBridge.onEventMarkerClicked === 'function') {
+                  window.ReinmarMapBridge.onEventMarkerClicked(item.id);
+                }
+              });
+              marker.addTo(eventMarkerLayer);
+              markerMap[String(item.id)] = marker;
+            });
+            if (shouldFit) {
+              fitAll();
+            }
+          },
+          setDraftPin: function(lat, lng, panTo, zoom) {
+            attachDraftMarker(lat, lng);
+            if (panTo) {
+              map.setView([lat, lng], zoom || 14);
+            }
+          },
+          dropPinAtCenter: function() {
+            var center = map.getCenter();
+            attachDraftMarker(center.lat, center.lng);
+            notifyPicked(center.lat, center.lng);
+          },
+          clearDraftPin: function() {
+            if (draftMarker) {
+              map.removeLayer(draftMarker);
+              draftMarker = null;
+            }
+          },
+          focusLocation: function(lat, lng, zoom) {
+            map.setView([lat, lng], zoom || 14);
+          },
+          setUserLocation: function(lat, lng, zoom) {
+            if (userLocationHalo) {
+              userLocationHalo.setLatLng([lat, lng]);
+            } else {
+              userLocationHalo = L.circleMarker([lat, lng], {
+                radius: 16,
+                color: '#1A73E8',
+                weight: 1,
+                opacity: 0.35,
+                fillColor: '#1A73E8',
+                fillOpacity: 0.16,
+                interactive: false
+              }).addTo(map);
+            }
+            if (userLocationDot) {
+              userLocationDot.setLatLng([lat, lng]);
+            } else {
+              userLocationDot = L.circleMarker([lat, lng], {
+                radius: 7,
+                color: '#FFFFFF',
+                weight: 2.5,
+                opacity: 1,
+                fillColor: '#1A73E8',
+                fillOpacity: 1,
+                interactive: false
+              }).addTo(map);
+            }
+            map.setView([lat, lng], zoom || 15);
+          },
+          focusEvent: function(eventId) {
+            var marker = markerMap[String(eventId)];
+            if (marker) {
+              map.setView(marker.getLatLng(), 15);
+              marker.openPopup();
+            }
+          },
+          fitAllMarkers: function() {
+            fitAll();
+          }
+        };
+
+        if (ENABLE_TAP) {
+          map.on('click', function(e) {
+            var lat = e.latlng.lat;
+            var lng = e.latlng.lng;
+            attachDraftMarker(lat, lng);
+            notifyPicked(lat, lng);
+          });
+        }
+
+        var resizeTimer = null;
+        function refreshSize() {
+          if (resizeTimer) clearTimeout(resizeTimer);
+          resizeTimer = setTimeout(function() {
+            map.invalidateSize({ animate: false, pan: false });
+          }, 120);
+        }
+        window.addEventListener('resize', refreshSize);
+        if (typeof ResizeObserver !== 'undefined') {
+          new ResizeObserver(refreshSize).observe(document.getElementById('map'));
+        }
+        setTimeout(refreshSize, 150);
+        setTimeout(refreshSize, 500);
+
+        if (window.ReinmarMapBridge && typeof window.ReinmarMapBridge.onMapReady === 'function') {
+          window.ReinmarMapBridge.onMapReady();
+        }
+      }
+
+      loadSource(0);
+    })();
+  </script>
+</body>
+</html>

@@ -9,43 +9,54 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.data.AppDatabase
-import com.example.data.ReinmarRepository
-import com.example.reminder.ReminderScheduler
-import com.example.ui.ReinmarApp
-import com.example.ui.ReinmarViewModel
+import com.example.di.AppContainer
+import com.example.domain.model.EventId
+import com.example.feature.calendar.CalendarViewModel
+import com.example.feature.map.MapViewModel
+import com.example.feature.notes.NotesViewModel
+import com.example.feature.shell.AppShellView
+import com.example.feature.shell.ShellViewModel
+import com.example.feature.transfer.TransferViewModel
+import com.example.reminder.ReminderExtras
 import com.example.ui.theme.KalendarzReinmarTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 
 class MainActivity : ComponentActivity() {
-    private val notificationEventId = MutableStateFlow<Long?>(null)
+    private val notificationEventId = MutableStateFlow<EventId?>(null)
+    private lateinit var appContainer: AppContainer
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        ReminderScheduler.ensureNotificationChannel(applicationContext)
+        appContainer = AppContainer(applicationContext)
+        appContainer.reminderPort.ensureChannel()
         extractNotificationEventId(intent)
-
-        val database = AppDatabase.getInstance(applicationContext)
-        val repository = ReinmarRepository(
-            eventDao = database.calendarEventDao(),
-            noteDao = database.noteDao(),
-        )
 
         setContent {
             KalendarzReinmarTheme {
-                val reinmarViewModel: ReinmarViewModel = viewModel(
-                    factory = ReinmarViewModel.factory(repository),
-                )
+                val shellVm: ShellViewModel = viewModel(factory = appContainer.shellViewModelFactory())
+                val calendarVm: CalendarViewModel = viewModel(factory = appContainer.calendarViewModelFactory())
+                val mapVm: MapViewModel = viewModel(factory = appContainer.mapViewModelFactory())
+                val notesVm: NotesViewModel = viewModel(factory = appContainer.notesViewModelFactory())
+                val transferVm: TransferViewModel = viewModel(factory = appContainer.transferViewModelFactory())
+
                 val incomingEventId by notificationEventId.collectAsStateWithLifecycle()
                 LaunchedEffect(incomingEventId) {
                     val eventId = incomingEventId
-                    if (eventId != null && eventId > 0L) {
-                        reinmarViewModel.requestOpenEventDetails(eventId)
+                    if (eventId != null && eventId.isValid) {
+                        shellVm.controller.requestOpenEventDetails(eventId)
                         notificationEventId.value = null
                     }
                 }
-                ReinmarApp(viewModel = reinmarViewModel)
+
+                AppShellView(
+                    container = appContainer,
+                    shellController = shellVm.controller,
+                    calendarController = calendarVm.controller,
+                    mapController = mapVm.controller,
+                    notesController = notesVm.controller,
+                    transferController = transferVm.controller,
+                )
             }
         }
     }
@@ -57,10 +68,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun extractNotificationEventId(intent: Intent?) {
-        val eventId = intent?.getLongExtra(ReminderScheduler.EXTRA_EVENT_ID, -1L) ?: -1L
-        if (eventId > 0L) {
+        val rawId = intent?.getLongExtra(ReminderExtras.EXTRA_EVENT_ID, -1L) ?: -1L
+        val eventId = EventId(rawId)
+        if (eventId.isValid) {
             notificationEventId.value = eventId
-            intent?.removeExtra(ReminderScheduler.EXTRA_EVENT_ID)
+            intent?.removeExtra(ReminderExtras.EXTRA_EVENT_ID)
         }
     }
 }

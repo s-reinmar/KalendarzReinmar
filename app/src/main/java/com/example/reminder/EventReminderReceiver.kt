@@ -12,14 +12,16 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.example.MainActivity
 import com.example.R
-import com.example.ui.DateUtils
+import com.example.data.time.SystemClockProvider
+import com.example.domain.model.DateKey
+import com.example.domain.service.PolishDateFormatter
 
 class EventReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val eventId = intent.getLongExtra(ReminderScheduler.EXTRA_EVENT_ID, -1L)
-        val title = intent.getStringExtra(ReminderScheduler.EXTRA_EVENT_TITLE).orEmpty()
-        val dateKey = intent.getStringExtra(ReminderScheduler.EXTRA_EVENT_DATE_KEY).orEmpty()
-        val locationSummary = intent.getStringExtra(ReminderScheduler.EXTRA_EVENT_LOCATION_SUMMARY)
+        val eventId = intent.getLongExtra(ReminderExtras.EXTRA_EVENT_ID, -1L)
+        val title = intent.getStringExtra(ReminderExtras.EXTRA_EVENT_TITLE).orEmpty()
+        val rawDateKey = intent.getStringExtra(ReminderExtras.EXTRA_EVENT_DATE_KEY).orEmpty()
+        val locationSummary = intent.getStringExtra(ReminderExtras.EXTRA_EVENT_LOCATION_SUMMARY)
         if (eventId <= 0L || title.isBlank()) return
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -30,13 +32,13 @@ class EventReminderReceiver : BroadcastReceiver() {
             if (!granted) return
         }
 
-        ReminderScheduler.ensureNotificationChannel(context)
+        AndroidReminderScheduler(context.applicationContext, SystemClockProvider()).ensureChannel()
 
         val openAppIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                 Intent.FLAG_ACTIVITY_CLEAR_TOP or
                 Intent.FLAG_ACTIVITY_SINGLE_TOP
-            putExtra(ReminderScheduler.EXTRA_EVENT_ID, eventId)
+            putExtra(ReminderExtras.EXTRA_EVENT_ID, eventId)
         }
         val contentPendingIntent = PendingIntent.getActivity(
             context,
@@ -45,18 +47,17 @@ class EventReminderReceiver : BroadcastReceiver() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        val dateText = if (dateKey.isNotBlank()) {
-            DateUtils.formatDateKeyDisplay(dateKey)
-        } else {
-            context.getString(R.string.app_name)
-        }
+        val dateText = DateKey.parseOrNull(rawDateKey)
+            ?.let(PolishDateFormatter::formatDateKeyDisplay)
+            ?: context.getString(R.string.app_name)
+
         val contentText = if (!locationSummary.isNullOrBlank()) {
             "$dateText • ${context.getString(R.string.location_badge, locationSummary)}"
         } else {
             dateText
         }
 
-        val builder = NotificationCompat.Builder(context, ReminderScheduler.CHANNEL_ID)
+        val builder = NotificationCompat.Builder(context, ReminderExtras.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_app_event)
             .setContentTitle(title)
             .setContentText(contentText)

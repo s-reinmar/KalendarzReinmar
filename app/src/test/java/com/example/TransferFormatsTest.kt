@@ -1,27 +1,45 @@
 package com.example
 
-import com.example.data.CalendarEventEntity
-import com.example.data.NoteEntity
-import com.example.data.TransferFormats
+import com.example.data.transfer.CsvTransferCodec
+import com.example.data.transfer.IcsEventCodec
+import com.example.domain.model.CalendarEvent
+import com.example.domain.model.DateKey
+import com.example.domain.model.EventId
+import com.example.domain.model.Note
+import com.example.domain.model.NoteId
+import com.example.fakes.FakeClockProvider
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class TransferFormatsTest {
 
+    private val icsCodec = IcsEventCodec(FakeClockProvider())
+    private val csvCodec = CsvTransferCodec()
+
     @Test
     fun icsRoundTripPreservesEventsAndEscaping() {
         val events = listOf(
-            CalendarEventEntity(id = 1, title = "Spotkanie, zespół; Q4", dateKey = "2026-11-25", createdAt = 1000L),
-            CalendarEventEntity(id = 2, title = "Wizyta\\kontrola", dateKey = "2026-12-31", createdAt = 2000L),
+            CalendarEvent(
+                id = EventId(1),
+                title = "Spotkanie, zespół; Q4",
+                dateKey = requireNotNull(DateKey.parseOrNull("2026-11-25")),
+                createdAtMillis = 1000L,
+            ),
+            CalendarEvent(
+                id = EventId(2),
+                title = "Wizyta\\kontrola",
+                dateKey = requireNotNull(DateKey.parseOrNull("2026-12-31")),
+                createdAtMillis = 2000L,
+            ),
         )
-        val ics = TransferFormats.exportEventsToIcs(events)
-        val parsed = TransferFormats.parseEventsFromIcs(ics)
+        val ics = icsCodec.export(events)
+        val parsed = icsCodec.parse(ics)
 
         assertEquals(2, parsed.size)
         assertEquals("Spotkanie, zespół; Q4", parsed[0].title)
-        assertEquals("2026-11-25", parsed[0].dateKey)
+        assertEquals("2026-11-25", parsed[0].dateKey.value)
         assertEquals("Wizyta\\kontrola", parsed[1].title)
-        assertEquals("2026-12-31", parsed[1].dateKey)
+        assertEquals("2026-12-31", parsed[1].dateKey.value)
     }
 
     @Test
@@ -34,37 +52,45 @@ class TransferFormatsTest {
             "END:VEVENT\r\n" +
             "END:VCALENDAR\r\n"
 
-        val parsed = TransferFormats.parseEventsFromIcs(raw)
+        val parsed = icsCodec.parse(raw)
         assertEquals(1, parsed.size)
-        assertEquals("2026-11-30", parsed[0].dateKey)
+        assertEquals("2026-11-30", parsed[0].dateKey.value)
         assertEquals("Długa nazwa wydarzenia", parsed[0].title)
     }
 
     @Test
     fun csvEventsRoundTripAndSemicolonImport() {
         val events = listOf(
-            CalendarEventEntity(id = 1, title = "Rozmowa, \"ważna\"", dateKey = "2026-11-25"),
+            CalendarEvent(
+                id = EventId(1),
+                title = "Rozmowa, \"ważna\"",
+                dateKey = requireNotNull(DateKey.parseOrNull("2026-11-25")),
+            ),
         )
-        val csv = TransferFormats.exportEventsToCsv(events)
-        val parsed = TransferFormats.parseCsv(csv, preferNotesWhenAmbiguous = false)
+        val csv = csvCodec.exportEvents(events)
+        val parsed = csvCodec.parse(csv, preferNotesWhenAmbiguous = false)
         assertEquals(1, parsed.events.size)
-        assertEquals("2026-11-25", parsed.events[0].dateKey)
+        assertEquals("2026-11-25", parsed.events[0].dateKey.value)
         assertEquals("Rozmowa, \"ważna\"", parsed.events[0].title)
 
         val polishExcelCsv = "\uFEFFdata;tytuł\r\n25.11.2026;Przegląd\r\n"
-        val parsedPl = TransferFormats.parseCsv(polishExcelCsv, preferNotesWhenAmbiguous = false)
+        val parsedPl = csvCodec.parse(polishExcelCsv, preferNotesWhenAmbiguous = false)
         assertEquals(1, parsedPl.events.size)
-        assertEquals("2026-11-25", parsedPl.events[0].dateKey)
+        assertEquals("2026-11-25", parsedPl.events[0].dateKey.value)
         assertEquals("Przegląd", parsedPl.events[0].title)
     }
 
     @Test
     fun csvNotesRoundTripWithMultilineContent() {
         val notes = listOf(
-            NoteEntity(id = 1, title = "Lista", content = "Punkt 1\nPunkt 2, \"cytat\""),
+            Note(
+                id = NoteId(1),
+                title = "Lista",
+                content = "Punkt 1\nPunkt 2, \"cytat\"",
+            ),
         )
-        val csv = TransferFormats.exportNotesToCsv(notes)
-        val parsed = TransferFormats.parseCsv(csv, preferNotesWhenAmbiguous = true)
+        val csv = csvCodec.exportNotes(notes)
+        val parsed = csvCodec.parse(csv, preferNotesWhenAmbiguous = true)
         assertEquals(1, parsed.notes.size)
         assertEquals("Lista", parsed.notes[0].title)
         assertEquals("Punkt 1\nPunkt 2, \"cytat\"", parsed.notes[0].content)

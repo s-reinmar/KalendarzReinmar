@@ -107,4 +107,15 @@
     <string name="map_resolving_address">Pobieranie adresu…</string>
     <string name="map_renderer_crashed">Widok mapy został zresetowany</string>
     <string name="map_reload_action">Odśwież mapę</string>
+
+    <string name="menu_section_demo">Tryb demo</string>
+    <string name="menu_section_transfer">Import i eksport</string>
+    <string name="demo_load_action">Załaduj dane demo</string>
+    <string name="demo_clear_action">Wyczyść dane demo</string>
+    <string name="demo_loaded_feedback">Załadowano dane demo: %1$d wydarzeń i %2$d notatek</string>
+    <string name="demo_already_loaded_feedback">Dane demo są już załadowane</string>
+    <string name="demo_cleared_feedback">Usunięto dane demo (%1$d wydarzeń, %2$d notatek)</string>
+    <string name="demo_nothing_to_clear_feedback">Brak danych demo do usunięcia</string>
+    <string name="calendar_summary_count">Wydarzenia: %1$d</string>
+    <string name="notes_summary_count">Notatki: %1$d</string>
 </resources>

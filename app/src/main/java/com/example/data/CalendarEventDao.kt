@@ -16,7 +16,7 @@ interface CalendarEventDao {
     suspend fun insertEvent(event: CalendarEventEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertEvents(events: List<CalendarEventEntity>)
+    suspend fun insertEvents(events: List<CalendarEventEntity>): List<Long>
 
     @Query(
         "UPDATE calendar_events SET reminderTimeMinutes = :reminderTimeMinutes, " +
