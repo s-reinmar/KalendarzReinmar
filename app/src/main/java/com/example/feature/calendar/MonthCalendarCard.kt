@@ -23,6 +23,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -30,6 +31,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -47,11 +50,21 @@ internal fun MonthCalendarCard(
     dayColorDots: Map<DateKey, List<EventColorTag>>,
     selectedDateKey: DateKey?,
     todayDateKey: DateKey,
+    weekStartsOnMonday: Boolean = true,
     onSelectDate: (DateKey?) -> Unit,
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
+    onJumpToToday: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    val todayDay = todayDateKey.toCalendarDay()
+    val showTodayAction = todayDay != null && (
+        year != todayDay.year ||
+            month != todayDay.month ||
+            (selectedDateKey != null && selectedDateKey != todayDateKey)
+        )
+    val jumpTodayContentDesc = stringResource(R.string.cd_jump_today)
+
     Surface(
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -82,12 +95,31 @@ internal fun MonthCalendarCard(
                     )
                 }
 
-                Text(
-                    text = PolishDateFormatter.formatMonthYear(year, month),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.testTag("calendar_month_label"),
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = PolishDateFormatter.formatMonthYear(year, month),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.testTag("calendar_month_label"),
+                    )
+                    if (showTodayAction) {
+                        TextButton(
+                            onClick = onJumpToToday,
+                            modifier = Modifier
+                                .minimumInteractiveComponentSize()
+                                .semantics { contentDescription = jumpTodayContentDesc }
+                                .testTag("calendar_jump_today_button"),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.calendar_jump_today),
+                                style = MaterialTheme.typography.labelLarge,
+                            )
+                        }
+                    }
+                }
 
                 IconButton(
                     onClick = onNextMonth,
@@ -106,7 +138,7 @@ internal fun MonthCalendarCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             Row(modifier = Modifier.fillMaxWidth()) {
-                PolishDateFormatter.weekdayHeaders.forEach { header ->
+                PolishDateFormatter.weekdayHeaders(weekStartsOnMonday).forEach { header ->
                     Text(
                         text = header,
                         style = MaterialTheme.typography.labelMedium,

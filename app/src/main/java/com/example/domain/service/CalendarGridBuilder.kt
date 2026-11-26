@@ -24,7 +24,11 @@ data class YearMonth(
 
 object CalendarGridBuilder {
 
-    fun buildMonthGrid(year: Int, month: Int): List<CalendarDay?> {
+    fun buildMonthGrid(
+        year: Int,
+        month: Int,
+        weekStartsOnMonday: Boolean = true,
+    ): List<CalendarDay?> {
         val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
             clear()
             set(Calendar.YEAR, year)
@@ -32,9 +36,14 @@ object CalendarGridBuilder {
             set(Calendar.DAY_OF_MONTH, 1)
         }
         val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
-        // Calendar.MONDAY = 2 .. Calendar.SUNDAY = 1 -> map to 0..6 (Mon..Sun)
         val firstDayOfWeek = cal.get(Calendar.DAY_OF_WEEK)
-        val leadingEmpty = (firstDayOfWeek + 5) % 7
+        val leadingEmpty = if (weekStartsOnMonday) {
+            // Calendar.MONDAY = 2 .. Calendar.SUNDAY = 1 -> map to 0..6 (Mon..Sun)
+            (firstDayOfWeek + 5) % 7
+        } else {
+            // Calendar.SUNDAY = 1 .. Calendar.SATURDAY = 7 -> map to 0..6 (Sun..Sat)
+            (firstDayOfWeek - 1) % 7
+        }
 
         val cells = ArrayList<CalendarDay?>(leadingEmpty + daysInMonth)
         repeat(leadingEmpty) { cells.add(null) }

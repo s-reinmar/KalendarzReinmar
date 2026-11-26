@@ -332,4 +332,56 @@
     <string name="footer_github_url">https://github.com/s-reinmar</string>
     <string name="cd_footer_github_link">Otwórz konto GitHub s-reinmar</string>
     <string name="footer_open_link_error">Nie udało się otworzyć linku GitHub</string>
+
+    <!-- Reminder enhancements -->
+    <string name="reminder_snooze_action">Drzemka (+%1$d min)</string>
+    <string name="reminder_preset_default">Domyślna (%1$s)</string>
+    <string name="reminder_preset_15m_before">15 min przed</string>
+    <string name="reminder_preset_1h_before">1 godz. przed</string>
+    <string name="reminder_next_trigger_preview">Najbliższy alarm: %1$s</string>
+    <string name="reminder_past_warning">Wybrany termin już minął — alarm nie zostanie zaplanowany.</string>
+
+    <!-- Calendar navigation enhancements -->
+    <string name="calendar_jump_today">Dziś</string>
+    <string name="cd_jump_today">Przejdź do dzisiejszego dnia</string>
+
+    <!-- Full JSON Backup & Restore -->
+    <string name="transfer_export_json">Eksportuj kopię (.json)</string>
+    <string name="transfer_import_json">Przywróć kopię (.json)</string>
+    <string name="transfer_exported_backup">Zapisano pełną kopię: %1$d wydarzeń, %2$d notatek</string>
+    <string name="transfer_restored_backup">Przywrócono kopię: %1$d wydarzeń, %2$d notatek, %3$d palet</string>
+    <string name="transfer_invalid_backup">Nieprawidłowy plik kopii zapasowej JSON</string>
+    <string name="backup_restore_dialog_title">Przywróć kopię zapasową</string>
+    <string name="backup_restore_dialog_date">Data kopii: %1$s</string>
+    <string name="backup_restore_dialog_summary">Zawartość pliku: %1$d wydarzeń, %2$d notatek, %3$d palet kolorów.</string>
+    <string name="backup_restore_mode_merge">Połącz z obecnymi</string>
+    <string name="backup_restore_mode_replace">Zastąp wszystko</string>
+    <string name="backup_restore_merge_hint">Dodaje brakujące wpisy i pomija duplikaty bez usuwania obecnych danych.</string>
+    <string name="backup_restore_replace_hint">Usuwa obecne wydarzenia, notatki i palety, a następnie wczytuje dokładny stan z kopii.</string>
+
+    <!-- Extended Settings: Preferences, Backup & Local Stats -->
+    <string name="settings_preferences_title">Preferencje kalendarza i przypomnień</string>
+    <string name="settings_preferences_subtitle">Domyślna godzina alarmu, drzemka i układ tygodnia</string>
+    <string name="settings_default_reminder_label">Domyślna godzina przypomnienia</string>
+    <string name="settings_snooze_duration_label">Czas drzemki powiadomienia</string>
+    <string name="settings_snooze_option_minutes">%1$d min</string>
+    <string name="settings_week_start_label">Początek tygodnia</string>
+    <string name="settings_week_start_monday">Poniedziałek</string>
+    <string name="settings_week_start_sunday">Niedziela</string>
+
+    <string name="settings_backup_title">Kopia zapasowa i eksport danych</string>
+    <string name="settings_backup_subtitle">Pełny zapis lokalny JSON (wydarzenia, notatki, załączniki, motywy i ustawienia)</string>
+    <string name="settings_backup_export_json">Zapisz kopię (.json)</string>
+    <string name="settings_backup_import_json">Wczytaj kopię (.json)</string>
+    <string name="settings_backup_other_formats">Inne formaty wymiany</string>
+
+    <string name="settings_stats_title">Statystyki lokalnej bazy danych</string>
+    <string name="settings_stats_subtitle">Podsumowanie zapisanych danych w tym urządzeniu</string>
+    <string name="settings_stat_events">Wpisy</string>
+    <string name="settings_stat_tasks_pending">Zadania otwarte</string>
+    <string name="settings_stat_tasks_done">Ukończone</string>
+    <string name="settings_stat_reminders">Przypomnienia</string>
+    <string name="settings_stat_locations">Lokalizacje</string>
+    <string name="settings_stat_notes">Notatki</string>
+    <string name="settings_stat_palettes">Palety</string>
 </resources>

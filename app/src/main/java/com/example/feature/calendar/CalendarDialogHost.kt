@@ -31,6 +31,7 @@ fun CalendarDialogHost(
                 locationProvider = locationProvider,
                 initialEntryType = dialog.initialEntryType,
                 initialLocation = dialog.initialLocation,
+                defaultReminderTime = uiState.defaultReminderTime,
                 onDismiss = controller::dismissDialog,
                 onSave = { draft ->
                     if (draft.reminderTime != null) {
@@ -48,6 +49,7 @@ fun CalendarDialogHost(
                 geocodingService = geocodingService,
                 locationProvider = locationProvider,
                 existingEvent = dialog.event,
+                defaultReminderTime = uiState.defaultReminderTime,
                 onDismiss = controller::dismissDialog,
                 onSave = { draft ->
                     if (draft.reminderTime != null) {
@@ -84,6 +86,7 @@ fun CalendarDialogHost(
                 event = dialog.event,
                 geocodingService = geocodingService,
                 locationProvider = locationProvider,
+                defaultReminderTime = uiState.defaultReminderTime,
                 onDismiss = controller::dismissDialog,
                 onSave = { reminderTime, location ->
                     if (reminderTime != null) {

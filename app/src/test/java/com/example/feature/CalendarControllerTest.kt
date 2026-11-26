@@ -174,4 +174,53 @@ class CalendarControllerTest {
             controllerScope.cancel()
         }
     }
+
+    @Test
+    fun jumpToTodayRefreshTodayAndWeekStartPreferenceUpdateUiState() = runTest {
+        val controllerScope = CoroutineScope(coroutineContext + SupervisorJob())
+        try {
+            val clock = FakeClockProvider(
+                fixedDay = com.example.domain.model.CalendarDay(2026, 11, 25),
+            )
+            val prefsRepo = com.example.fakes.FakeAppPreferencesRepository()
+            val controller = CalendarController(
+                eventRepository = FakeEventRepository(),
+                reminderPort = FakeReminderPort(),
+                clock = clock,
+                scope = controllerScope,
+                appPreferencesRepository = prefsRepo,
+            )
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                controller.uiState.collect()
+            }
+            advanceUntilIdle()
+
+            // November 2026 starts on Sunday: Monday-first has 6 leading nulls, Sunday-first has 0
+            assertTrue(controller.uiState.value.weekStartsOnMonday)
+            assertEquals(6, controller.uiState.value.monthCells.takeWhile { it == null }.size)
+
+            prefsRepo.updateWeekStartsOnMonday(false)
+            advanceUntilIdle()
+            assertFalse(controller.uiState.value.weekStartsOnMonday)
+            assertEquals(0, controller.uiState.value.monthCells.takeWhile { it == null }.size)
+
+            // Navigate away, advance clock past midnight, refresh and jumpToToday
+            controller.nextMonth()
+            advanceUntilIdle()
+            assertEquals(12, controller.uiState.value.displayedMonth)
+
+            clock.fixedDay = com.example.domain.model.CalendarDay(2026, 11, 26)
+            controller.refreshToday()
+            advanceUntilIdle()
+            assertEquals(DateKey.parseOrNull("2026-11-26"), controller.uiState.value.todayDateKey)
+
+            controller.jumpToToday()
+            advanceUntilIdle()
+            assertEquals(2026, controller.uiState.value.displayedYear)
+            assertEquals(11, controller.uiState.value.displayedMonth)
+            assertEquals(DateKey.parseOrNull("2026-11-26"), controller.uiState.value.selectedDateKey)
+        } finally {
+            controllerScope.cancel()
+        }
+    }
 }

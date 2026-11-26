@@ -80,6 +80,15 @@ class DataStoreColorPaletteRepository(
         }
     }
 
+    override suspend fun replaceSavedPalettes(palettes: List<SavedColorPalette>) {
+        val envelope = SavedPalettesEnvelopeDto(
+            palettes = palettes.distinctBy { it.id }.map(SavedColorPalette::toDto),
+        )
+        dataStore.edit { prefs ->
+            prefs[KEY_SAVED_PALETTES] = json.encodeToString(envelope)
+        }
+    }
+
     private fun decodeSnapshot(raw: String?): ColorWheelSnapshot {
         if (raw.isNullOrBlank()) return ColorHarmonyEngine.defaultSnapshot()
         return runCatching {

@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -24,6 +25,8 @@ import com.example.R
 
 @Composable
 internal fun TopBarOverflowMenu(
+    onExportJson: () -> Unit,
+    onImportJson: () -> Unit,
     onImportIcs: () -> Unit,
     onExportIcs: () -> Unit,
     onImportCsv: () -> Unit,
@@ -49,6 +52,23 @@ internal fun TopBarOverflowMenu(
             onDismissRequest = { expanded = false },
         ) {
             MenuSectionLabel(text = stringResource(R.string.menu_section_transfer))
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.transfer_export_json)) },
+                onClick = {
+                    expanded = false
+                    onExportJson()
+                },
+                modifier = Modifier.testTag("menu_export_json"),
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.transfer_import_json)) },
+                onClick = {
+                    expanded = false
+                    onImportJson()
+                },
+                modifier = Modifier.testTag("menu_import_json"),
+            )
+            HorizontalDivider()
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.transfer_import_ics)) },
                 onClick = {

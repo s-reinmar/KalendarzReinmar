@@ -74,6 +74,7 @@ fun EventFormDialog(
     initialEntryType: CalendarEntryType = CalendarEntryType.EVENT,
     existingEvent: CalendarEvent? = null,
     initialLocation: EventLocation? = null,
+    defaultReminderTime: ReminderTime = ReminderTime.DEFAULT,
     onDismiss: () -> Unit,
     onSave: (EventDraft) -> Unit,
 ) {
@@ -100,8 +101,8 @@ fun EventFormDialog(
     var recurrence by remember(initialDraft) { mutableStateOf(initialDraft.recurrence) }
     var description by remember(initialDraft) { mutableStateOf(initialDraft.description) }
     var reminderEnabled by remember(initialDraft) { mutableStateOf(initialDraft.reminderTime != null) }
-    var reminderTime by remember(initialDraft) {
-        mutableStateOf(initialDraft.reminderTime ?: ReminderTime.DEFAULT)
+    var reminderTime by remember(initialDraft, defaultReminderTime) {
+        mutableStateOf(initialDraft.reminderTime ?: defaultReminderTime)
     }
     var selectedLocation by remember(initialDraft) { mutableStateOf(initialDraft.location) }
     var typeState by remember(initialDraft) {

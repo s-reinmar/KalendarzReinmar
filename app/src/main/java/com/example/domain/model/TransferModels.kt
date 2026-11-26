@@ -29,6 +29,19 @@ sealed interface TransferFeedback {
     data class ImportedBoth(val eventsCount: Int, val notesCount: Int) : TransferFeedback
     data class ExportedEvents(val count: Int) : TransferFeedback
     data class ExportedNotes(val count: Int) : TransferFeedback
+    data class ExportedBackup(
+        val eventsCount: Int,
+        val notesCount: Int,
+        val palettesCount: Int,
+    ) : TransferFeedback
+
+    data class RestoredBackup(
+        val eventsCount: Int,
+        val notesCount: Int,
+        val palettesCount: Int,
+    ) : TransferFeedback
+
+    data object InvalidBackupFile : TransferFeedback
     data object NothingToImport : TransferFeedback
     data object Error : TransferFeedback
 }

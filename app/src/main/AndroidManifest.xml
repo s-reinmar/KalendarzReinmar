@@ -42,6 +42,10 @@
             android:exported="false" />
 
         <receiver
+            android:name=".reminder.SnoozeReminderReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".reminder.BootReminderReceiver"
             android:exported="true">
             <intent-filter>

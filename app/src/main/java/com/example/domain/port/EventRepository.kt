@@ -12,6 +12,8 @@ interface EventRepository {
 
     suspend fun getEventsWithReminders(): List<CalendarEvent>
 
+    suspend fun getEventById(eventId: EventId): CalendarEvent? = null
+
     suspend fun addEvent(draft: EventDraft): CalendarEvent?
 
     suspend fun updateEvent(
@@ -31,6 +33,8 @@ interface EventRepository {
     )
 
     suspend fun deleteEvent(eventId: EventId)
+
+    suspend fun deleteAllEvents() {}
 
     suspend fun addEvents(events: List<CalendarEvent>): List<CalendarEvent>
 }

@@ -25,6 +25,24 @@ internal object TransferFeedbackFormatter {
         is TransferFeedback.ExportedNotes -> {
             context.getString(R.string.transfer_exported_notes, feedback.count)
         }
+        is TransferFeedback.ExportedBackup -> {
+            context.getString(
+                R.string.transfer_exported_backup,
+                feedback.eventsCount,
+                feedback.notesCount,
+            )
+        }
+        is TransferFeedback.RestoredBackup -> {
+            context.getString(
+                R.string.transfer_restored_backup,
+                feedback.eventsCount,
+                feedback.notesCount,
+                feedback.palettesCount,
+            )
+        }
+        TransferFeedback.InvalidBackupFile -> {
+            context.getString(R.string.transfer_invalid_backup)
+        }
         TransferFeedback.NothingToImport -> {
             context.getString(R.string.transfer_nothing_to_import)
         }

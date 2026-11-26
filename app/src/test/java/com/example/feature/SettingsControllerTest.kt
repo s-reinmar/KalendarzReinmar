@@ -191,4 +191,57 @@ class SettingsControllerTest {
             controllerScope.cancel()
         }
     }
+
+    @Test
+    fun preferencesAndLocalDatabaseStatsStaySynchronized() = runTest {
+        val controllerScope = CoroutineScope(coroutineContext + SupervisorJob())
+        try {
+            val paletteRepo = FakeColorPaletteRepository()
+            val prefsRepo = com.example.fakes.FakeAppPreferencesRepository()
+            val eventRepo = com.example.fakes.FakeEventRepository()
+            val noteRepo = com.example.fakes.FakeNoteRepository()
+            val controller = SettingsController(
+                repository = paletteRepo,
+                clock = FakeClockProvider(),
+                scope = controllerScope,
+                appPreferencesRepository = prefsRepo,
+                eventRepository = eventRepo,
+                noteRepository = noteRepo,
+            )
+            advanceUntilIdle()
+
+            eventRepo.addEvent(
+                com.example.domain.model.EventDraft(
+                    title = "Zadanie 1",
+                    dateKey = requireNotNull(com.example.domain.model.DateKey.parseOrNull("2026-11-25")),
+                    details = com.example.domain.model.EventTypeDetails.Task(isCompleted = false),
+                    reminderTime = com.example.domain.model.ReminderTime.fromHourMinute(9, 0),
+                ),
+            )
+            noteRepo.addNote(
+                com.example.domain.model.NoteDraft(
+                    title = "Notatka",
+                    document = com.example.domain.model.NoteRichDocument(text = "Treść"),
+                ),
+            )
+            controller.updateDefaultReminderTime(com.example.domain.model.ReminderTime.fromHourMinute(7, 30))
+            controller.updateDefaultSnoozeMinutes(10)
+            controller.setWeekStartsOnMonday(false)
+            advanceUntilIdle()
+
+            val state = controller.uiState.value
+            assertEquals(
+                com.example.domain.model.ReminderTime.fromHourMinute(7, 30),
+                state.preferences.defaultReminderTime,
+            )
+            assertEquals(10, state.preferences.defaultSnoozeMinutes)
+            assertFalse(state.preferences.weekStartsOnMonday)
+            assertEquals(1, state.databaseStats.totalEvents)
+            assertEquals(1, state.databaseStats.pendingTasks)
+            assertEquals(1, state.databaseStats.eventsWithReminder)
+            assertEquals(1, state.databaseStats.totalNotes)
+        } finally {
+            controllerScope.cancel()
+        }
+    }
 }

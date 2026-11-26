@@ -33,6 +33,7 @@ fun CalendarScreen(
     onSelectTypeFilter: (CalendarEntryType?) -> Unit,
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
+    onJumpToToday: () -> Unit = {},
     onEventClick: (CalendarEvent) -> Unit,
     onToggleTaskCompleted: (CalendarEvent) -> Unit,
     onLocationPinClick: (CalendarEvent) -> Unit,
@@ -56,9 +57,11 @@ fun CalendarScreen(
                 dayColorDots = uiState.dayColorDots,
                 selectedDateKey = uiState.selectedDateKey,
                 todayDateKey = uiState.todayDateKey,
+                weekStartsOnMonday = uiState.weekStartsOnMonday,
                 onSelectDate = onSelectDate,
                 onPreviousMonth = onPreviousMonth,
                 onNextMonth = onNextMonth,
+                onJumpToToday = onJumpToToday,
             )
         }
 

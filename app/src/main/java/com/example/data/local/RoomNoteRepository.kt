@@ -52,6 +52,10 @@ class RoomNoteRepository(
         noteDao.deleteNoteById(noteId.value)
     }
 
+    override suspend fun deleteAllNotes() {
+        noteDao.deleteAllNotes()
+    }
+
     override suspend fun addNotes(notes: List<Note>): Int {
         val valid = notes.mapNotNull { note ->
             val cleanDoc = note.document.trimmed()

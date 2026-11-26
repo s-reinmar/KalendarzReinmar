@@ -7,6 +7,7 @@ import com.example.domain.model.DateKey
 import com.example.domain.model.EventColorTag
 import com.example.domain.model.EventId
 import com.example.domain.model.EventLocation
+import com.example.domain.model.ReminderTime
 import com.example.domain.service.CalendarGridBuilder
 import com.example.domain.service.EventScheduleMatcher
 
@@ -32,10 +33,16 @@ data class CalendarUiState(
     val selectedDateKey: DateKey? = null,
     val activeTypeFilter: CalendarEntryType? = null,
     val todayDateKey: DateKey,
+    val weekStartsOnMonday: Boolean = true,
+    val defaultReminderTime: ReminderTime = ReminderTime.DEFAULT,
     val dialog: CalendarDialogState = CalendarDialogState.None,
 ) {
     val monthCells: List<CalendarDay?> by lazy {
-        CalendarGridBuilder.buildMonthGrid(displayedYear, displayedMonth)
+        CalendarGridBuilder.buildMonthGrid(
+            year = displayedYear,
+            month = displayedMonth,
+            weekStartsOnMonday = weekStartsOnMonday,
+        )
     }
 
     val typeFilteredEvents: List<CalendarEvent> by lazy {

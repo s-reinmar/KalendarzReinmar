@@ -1,12 +1,18 @@
 package com.example.feature.settings
 
+import com.example.domain.model.AppPreferences
 import com.example.domain.model.ColorHarmonyRule
 import com.example.domain.model.ColorWheelSnapshot
+import com.example.domain.model.LocalDatabaseStats
 import com.example.domain.model.PaletteId
+import com.example.domain.model.ReminderTime
 import com.example.domain.model.SavedColorPalette
 import com.example.domain.model.ThemeSurfaceMode
+import com.example.domain.port.AppPreferencesRepository
 import com.example.domain.port.ClockProvider
 import com.example.domain.port.ColorPaletteRepository
+import com.example.domain.port.EventRepository
+import com.example.domain.port.NoteRepository
 import com.example.domain.service.ColorHarmonyEngine
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
@@ -18,6 +24,9 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -25,6 +34,9 @@ class SettingsController(
     private val repository: ColorPaletteRepository,
     private val clock: ClockProvider,
     private val scope: CoroutineScope,
+    private val appPreferencesRepository: AppPreferencesRepository? = null,
+    private val eventRepository: EventRepository? = null,
+    private val noteRepository: NoteRepository? = null,
 ) {
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -34,15 +46,28 @@ class SettingsController(
 
     private var hasHydratedSnapshot = false
     private var hasLocalSnapshotMutation = false
+    private var lastPersistedSnapshot: ColorWheelSnapshot? = null
     private var debouncedSaveJob: Job? = null
 
     init {
+        observeColorPalettes()
+        observePreferences()
+        observeDatabaseStats()
+    }
+
+    private fun observeColorPalettes() {
         scope.launch {
             repository.observeState().collect { persisted ->
                 _uiState.update { current ->
-                    val shouldHydrateActive = !hasHydratedSnapshot && !hasLocalSnapshotMutation
+                    val isExternalRestore = hasHydratedSnapshot &&
+                        debouncedSaveJob?.isActive != true &&
+                        lastPersistedSnapshot != null &&
+                        persisted.activeSnapshot != lastPersistedSnapshot
+                    val shouldHydrateActive =
+                        (!hasHydratedSnapshot && !hasLocalSnapshotMutation) || isExternalRestore
+                    hasHydratedSnapshot = true
                     if (shouldHydrateActive) {
-                        hasHydratedSnapshot = true
+                        lastPersistedSnapshot = persisted.activeSnapshot
                         val hydratedSwatches = ColorHarmonyEngine.normalizeSwatches(
                             persisted.activeSnapshot.swatches,
                         )
@@ -56,11 +81,82 @@ class SettingsController(
                             savedPalettes = persisted.savedPalettes,
                         )
                     } else {
-                        hasHydratedSnapshot = true
                         current.copy(savedPalettes = persisted.savedPalettes)
                     }
                 }
             }
+        }
+    }
+
+    private fun observePreferences() {
+        val prefsRepo = appPreferencesRepository ?: return
+        scope.launch {
+            prefsRepo.observePreferences().collect { prefs ->
+                _uiState.update { it.copy(preferences = prefs) }
+            }
+        }
+    }
+
+    private fun observeDatabaseStats() {
+        val eventsFlow = eventRepository?.observeEvents() ?: flowOf(emptyList())
+        val notesFlow = noteRepository?.observeNotes() ?: flowOf(emptyList())
+        val palettesCountFlow = repository.observeState().map { it.savedPalettes.size }
+
+        scope.launch {
+            combine(eventsFlow, notesFlow, palettesCountFlow) { events, notes, palettesCount ->
+                LocalDatabaseStats.compute(
+                    events = events,
+                    notes = notes,
+                    palettesCount = palettesCount,
+                )
+            }.collect { stats ->
+                _uiState.update { it.copy(databaseStats = stats) }
+            }
+        }
+    }
+
+    fun openDefaultReminderPicker() {
+        _uiState.update { it.copy(isDefaultReminderPickerVisible = true) }
+    }
+
+    fun dismissDefaultReminderPicker() {
+        _uiState.update { it.copy(isDefaultReminderPickerVisible = false) }
+    }
+
+    fun updateDefaultReminderTime(time: ReminderTime) {
+        val updated = _uiState.value.preferences.copy(defaultReminderTime = time)
+        _uiState.update { current ->
+            current.copy(
+                isDefaultReminderPickerVisible = false,
+                preferences = updated,
+            )
+        }
+        val prefsRepo = appPreferencesRepository ?: return
+        scope.launch {
+            prefsRepo.updatePreferences(updated)
+        }
+    }
+
+    fun updateDefaultSnoozeMinutes(minutes: Int) {
+        val safeMinutes = AppPreferences.normalizeSnoozeMinutes(minutes)
+        val updated = _uiState.value.preferences.copy(defaultSnoozeMinutes = safeMinutes)
+        _uiState.update { current ->
+            current.copy(preferences = updated)
+        }
+        val prefsRepo = appPreferencesRepository ?: return
+        scope.launch {
+            prefsRepo.updatePreferences(updated)
+        }
+    }
+
+    fun setWeekStartsOnMonday(startsOnMonday: Boolean) {
+        val updated = _uiState.value.preferences.copy(weekStartsOnMonday = startsOnMonday)
+        _uiState.update { current ->
+            current.copy(preferences = updated)
+        }
+        val prefsRepo = appPreferencesRepository ?: return
+        scope.launch {
+            prefsRepo.updatePreferences(updated)
         }
     }
 
@@ -232,6 +328,7 @@ class SettingsController(
     private fun scheduleDebouncedSnapshotSave() {
         debouncedSaveJob?.cancel()
         val snapshot = currentSnapshot()
+        lastPersistedSnapshot = snapshot
         debouncedSaveJob = scope.launch {
             delay(AUTO_SAVE_DEBOUNCE_MILLIS)
             repository.saveCurrentSnapshot(snapshot)
@@ -241,6 +338,7 @@ class SettingsController(
     private fun persistCurrentSnapshotImmediately() {
         debouncedSaveJob?.cancel()
         val snapshot = currentSnapshot()
+        lastPersistedSnapshot = snapshot
         scope.launch {
             repository.saveCurrentSnapshot(snapshot)
         }

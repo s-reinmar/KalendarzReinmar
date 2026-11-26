@@ -7,11 +7,14 @@ import com.example.data.geocoding.NominatimGeocodingService
 import com.example.data.local.RoomEventRepository
 import com.example.data.local.RoomNoteRepository
 import com.example.data.location.AndroidLocationProvider
+import com.example.data.preferences.DataStoreAppPreferencesRepository
 import com.example.data.preferences.DataStoreColorPaletteRepository
 import com.example.data.time.SystemClockProvider
 import com.example.data.transfer.AndroidDocumentStorage
 import com.example.data.transfer.CsvTransferCodec
+import com.example.data.transfer.FullBackupCodec
 import com.example.data.transfer.IcsEventCodec
+import com.example.domain.port.AppPreferencesRepository
 import com.example.domain.port.ClockProvider
 import com.example.domain.port.ColorPaletteRepository
 import com.example.domain.port.DeviceLocationProvider
@@ -20,6 +23,7 @@ import com.example.domain.port.EventRepository
 import com.example.domain.port.GeocodingService
 import com.example.domain.port.NoteRepository
 import com.example.domain.port.ReminderPort
+import com.example.domain.service.BackupRestoreService
 import com.example.feature.calendar.CalendarViewModel
 import com.example.feature.map.MapViewModel
 import com.example.feature.notes.NotesViewModel
@@ -41,7 +45,17 @@ class AppContainer(appContext: Context) {
     val documentStoragePort: DocumentStoragePort = AndroidDocumentStorage(context.contentResolver)
     val icsEventCodec: IcsEventCodec = IcsEventCodec(clockProvider)
     val csvTransferCodec: CsvTransferCodec = CsvTransferCodec()
+    val fullBackupCodec: FullBackupCodec = FullBackupCodec()
     val colorPaletteRepository: ColorPaletteRepository = DataStoreColorPaletteRepository(context)
+    val appPreferencesRepository: AppPreferencesRepository = DataStoreAppPreferencesRepository(context)
+    val backupRestoreService: BackupRestoreService = BackupRestoreService(
+        eventRepository = eventRepository,
+        noteRepository = noteRepository,
+        colorPaletteRepository = colorPaletteRepository,
+        appPreferencesRepository = appPreferencesRepository,
+        reminderPort = reminderPort,
+        clock = clockProvider,
+    )
 
     fun shellViewModelFactory(): ViewModelProvider.Factory = ShellViewModel.factory()
 
@@ -49,6 +63,7 @@ class AppContainer(appContext: Context) {
         eventRepository = eventRepository,
         reminderPort = reminderPort,
         clock = clockProvider,
+        appPreferencesRepository = appPreferencesRepository,
     )
 
     fun mapViewModelFactory(): ViewModelProvider.Factory = MapViewModel.factory(
@@ -68,10 +83,16 @@ class AppContainer(appContext: Context) {
         documentStorage = documentStoragePort,
         icsCodec = icsEventCodec,
         csvCodec = csvTransferCodec,
+        backupRestoreService = backupRestoreService,
+        fullBackupCodec = fullBackupCodec,
+        reminderPort = reminderPort,
     )
 
     fun settingsViewModelFactory(): ViewModelProvider.Factory = SettingsViewModel.factory(
         colorPaletteRepository = colorPaletteRepository,
         clock = clockProvider,
+        appPreferencesRepository = appPreferencesRepository,
+        eventRepository = eventRepository,
+        noteRepository = noteRepository,
     )
 }

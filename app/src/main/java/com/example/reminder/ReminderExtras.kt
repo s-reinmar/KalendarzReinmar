@@ -6,4 +6,7 @@ object ReminderExtras {
     const val EXTRA_EVENT_TITLE = "extra_event_title"
     const val EXTRA_EVENT_DATE_KEY = "extra_event_date_key"
     const val EXTRA_EVENT_LOCATION_SUMMARY = "extra_event_location_summary"
+    const val EXTRA_SNOOZE_MINUTES = "extra_snooze_minutes"
+    const val EXTRA_IS_SNOOZE = "extra_is_snooze"
+    const val SNOOZE_REQUEST_CODE_OFFSET = 1_000_000
 }

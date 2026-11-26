@@ -11,4 +11,5 @@ interface ColorPaletteRepository {
     suspend fun saveCurrentSnapshot(snapshot: ColorWheelSnapshot)
     suspend fun addSavedPalette(palette: SavedColorPalette)
     suspend fun deleteSavedPalette(id: PaletteId)
+    suspend fun replaceSavedPalettes(palettes: List<SavedColorPalette>) {}
 }

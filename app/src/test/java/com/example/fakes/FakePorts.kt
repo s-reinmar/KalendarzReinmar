@@ -1,5 +1,6 @@
 package com.example.fakes
 
+import com.example.domain.model.AppPreferences
 import com.example.domain.model.CalendarDay
 import com.example.domain.model.CalendarEvent
 import com.example.domain.model.ColorWheelSnapshot
@@ -16,6 +17,7 @@ import com.example.domain.model.PaletteId
 import com.example.domain.model.PersistedColorWheelState
 import com.example.domain.model.ReminderTime
 import com.example.domain.model.SavedColorPalette
+import com.example.domain.port.AppPreferencesRepository
 import com.example.domain.port.ClockProvider
 import com.example.domain.port.ColorPaletteRepository
 import com.example.domain.port.DeviceLocationProvider
@@ -31,8 +33,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 class FakeClockProvider(
-    private val fixedDay: CalendarDay = CalendarDay(2026, 11, 25),
-    private val fixedMillis: Long = 1_764_000_000_000L,
+    var fixedDay: CalendarDay = CalendarDay(2026, 11, 25),
+    var fixedMillis: Long = 1_764_000_000_000L,
 ) : ClockProvider {
     override fun today(): CalendarDay = fixedDay
     override fun nowMillis(): Long = fixedMillis
@@ -43,6 +45,9 @@ class FakeEventRepository : EventRepository {
     private var nextId = 1L
 
     override fun observeEvents(): Flow<List<CalendarEvent>> = eventsFlow.asStateFlow()
+
+    override suspend fun getEventById(eventId: EventId): CalendarEvent? =
+        eventsFlow.value.firstOrNull { it.id == eventId }
 
     override suspend fun getEventsWithReminders(): List<CalendarEvent> =
         eventsFlow.value.filter { it.hasReminder }
@@ -123,6 +128,10 @@ class FakeEventRepository : EventRepository {
         eventsFlow.update { list -> list.filterNot { it.id == eventId } }
     }
 
+    override suspend fun deleteAllEvents() {
+        eventsFlow.value = emptyList()
+    }
+
     override suspend fun addEvents(events: List<CalendarEvent>): List<CalendarEvent> {
         val inserted = events.mapNotNull { event ->
             val trimmed = event.title.trim()
@@ -175,6 +184,10 @@ class FakeNoteRepository : NoteRepository {
         notesFlow.update { list -> list.filterNot { it.id == noteId } }
     }
 
+    override suspend fun deleteAllNotes() {
+        notesFlow.value = emptyList()
+    }
+
     override suspend fun addNotes(notes: List<Note>): Int {
         val valid = notes.mapNotNull { note ->
             val cleanDoc = note.document.trimmed()
@@ -198,8 +211,15 @@ class FakeNoteRepository : NoteRepository {
 }
 
 class FakeReminderPort : ReminderPort {
+    data class SnoozeCall(
+        val eventId: EventId,
+        val title: String,
+        val snoozeMinutes: Int,
+    )
+
     val scheduledEvents = mutableListOf<CalendarEvent>()
     val cancelledEventIds = mutableListOf<EventId>()
+    val snoozedCalls = mutableListOf<SnoozeCall>()
     var channelEnsured = false
 
     override fun ensureChannel() {
@@ -208,6 +228,16 @@ class FakeReminderPort : ReminderPort {
 
     override fun schedule(event: CalendarEvent) {
         scheduledEvents.add(event)
+    }
+
+    override fun scheduleSnooze(
+        eventId: EventId,
+        title: String,
+        dateKey: DateKey,
+        locationSummary: String?,
+        snoozeMinutes: Int,
+    ) {
+        snoozedCalls.add(SnoozeCall(eventId, title, snoozeMinutes))
     }
 
     override fun cancel(eventId: EventId) {
@@ -280,5 +310,27 @@ class FakeColorPaletteRepository(
                 savedPalettes = current.savedPalettes.filterNot { it.id == id },
             )
         }
+    }
+
+    override suspend fun replaceSavedPalettes(palettes: List<SavedColorPalette>) {
+        stateFlow.update { current ->
+            current.copy(savedPalettes = palettes)
+        }
+    }
+}
+
+class FakeAppPreferencesRepository(
+    initialPreferences: AppPreferences = AppPreferences(),
+) : AppPreferencesRepository {
+    private val prefsFlow = MutableStateFlow(initialPreferences)
+
+    override fun observePreferences(): Flow<AppPreferences> = prefsFlow.asStateFlow()
+
+    override suspend fun updatePreferences(preferences: AppPreferences) {
+        prefsFlow.value = preferences.normalized()
+    }
+
+    suspend fun updateWeekStartsOnMonday(startsOnMonday: Boolean) {
+        prefsFlow.update { it.copy(weekStartsOnMonday = startsOnMonday) }
     }
 }

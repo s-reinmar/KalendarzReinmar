@@ -40,9 +40,15 @@ interface CalendarEventDao {
     @Query("SELECT * FROM calendar_events WHERE reminderTimeMinutes IS NOT NULL")
     suspend fun getEventsWithReminders(): List<CalendarEventEntity>
 
+    @Query("SELECT * FROM calendar_events WHERE id = :eventId LIMIT 1")
+    suspend fun getEventById(eventId: Long): CalendarEventEntity?
+
     @Update
     suspend fun updateEvent(event: CalendarEventEntity)
 
     @Query("DELETE FROM calendar_events WHERE id = :eventId")
     suspend fun deleteEventById(eventId: Long)
+
+    @Query("DELETE FROM calendar_events")
+    suspend fun deleteAllEvents()
 }

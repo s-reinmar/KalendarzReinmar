@@ -14,8 +14,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.domain.model.ColorHarmonyRule
 import com.example.domain.model.PaletteId
+import com.example.domain.model.ReminderTime
 import com.example.domain.model.SavedColorPalette
 import com.example.domain.model.ThemeSurfaceMode
+import com.example.feature.calendar.ReminderTimePickerDialog
 import com.example.ui.theme.KalendarzReinmarTheme
 
 @Composable
@@ -36,16 +38,49 @@ fun SettingsScreen(
     onConfirmSavePalette: (String) -> Unit,
     onRestoreSavedPalette: (SavedColorPalette) -> Unit,
     onDeleteSavedPalette: (PaletteId) -> Unit,
+    onOpenDefaultReminderPicker: () -> Unit = {},
+    onDismissDefaultReminderPicker: () -> Unit = {},
+    onConfirmDefaultReminderTime: (ReminderTime) -> Unit = {},
+    onSelectSnoozeMinutes: (Int) -> Unit = {},
+    onSelectWeekStartsOnMonday: (Boolean) -> Unit = {},
+    isTransferBusy: Boolean = false,
+    onExportJsonBackup: () -> Unit = {},
+    onImportJsonBackup: () -> Unit = {},
+    onExportIcs: () -> Unit = {},
+    onImportIcs: () -> Unit = {},
+    onExportCsv: () -> Unit = {},
+    onImportCsv: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp)
             .testTag("settings_screen"),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+        PreferencesSettingsCard(
+            preferences = uiState.preferences,
+            onOpenDefaultReminderPicker = onOpenDefaultReminderPicker,
+            onSelectSnoozeMinutes = onSelectSnoozeMinutes,
+            onSelectWeekStartsOnMonday = onSelectWeekStartsOnMonday,
+        )
+
+        BackupSettingsCard(
+            isBusy = isTransferBusy,
+            onExportJsonBackup = onExportJsonBackup,
+            onImportJsonBackup = onImportJsonBackup,
+            onExportIcs = onExportIcs,
+            onImportIcs = onImportIcs,
+            onExportCsv = onExportCsv,
+            onImportCsv = onImportCsv,
+        )
+
+        LocalStatsSettingsCard(
+            stats = uiState.databaseStats,
+        )
+
         ColorWheelSettingsCard(
             uiState = uiState,
             onToggleExpanded = onToggleColorWheelExpanded,
@@ -70,6 +105,14 @@ fun SettingsScreen(
             swatches = uiState.swatches,
             onDismiss = onDismissSavePaletteDialog,
             onConfirmSave = onConfirmSavePalette,
+        )
+    }
+
+    if (uiState.isDefaultReminderPickerVisible) {
+        ReminderTimePickerDialog(
+            initialTime = uiState.preferences.defaultReminderTime,
+            onDismiss = onDismissDefaultReminderPicker,
+            onConfirm = onConfirmDefaultReminderTime,
         )
     }
 }

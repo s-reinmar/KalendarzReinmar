@@ -22,6 +22,9 @@ class RoomEventRepository(
     override suspend fun getEventsWithReminders(): List<CalendarEvent> =
         eventDao.getEventsWithReminders().map(CalendarEventMapper::toDomain)
 
+    override suspend fun getEventById(eventId: EventId): CalendarEvent? =
+        eventDao.getEventById(eventId.value)?.let(CalendarEventMapper::toDomain)
+
     override suspend fun addEvent(draft: EventDraft): CalendarEvent? {
         val cleanDraft = draft.sanitized() ?: return null
         val createdAt = clock.nowMillis()
@@ -89,6 +92,10 @@ class RoomEventRepository(
 
     override suspend fun deleteEvent(eventId: EventId) {
         eventDao.deleteEventById(eventId.value)
+    }
+
+    override suspend fun deleteAllEvents() {
+        eventDao.deleteAllEvents()
     }
 
     override suspend fun addEvents(events: List<CalendarEvent>): List<CalendarEvent> {

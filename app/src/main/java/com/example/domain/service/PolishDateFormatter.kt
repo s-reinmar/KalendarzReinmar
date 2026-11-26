@@ -9,6 +9,10 @@ object PolishDateFormatter {
     private val polishLocale = Locale.forLanguageTag("pl-PL")
 
     val weekdayHeaders: List<String> = listOf("Pn", "Wt", "Śr", "Cz", "Pt", "So", "Nd")
+    private val sundayFirstHeaders: List<String> = listOf("Nd", "Pn", "Wt", "Śr", "Cz", "Pt", "So")
+
+    fun weekdayHeaders(weekStartsOnMonday: Boolean): List<String> =
+        if (weekStartsOnMonday) weekdayHeaders else sundayFirstHeaders
 
     private val monthNamesNominative: List<String> = listOf(
         "Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec",
@@ -33,6 +37,16 @@ object PolishDateFormatter {
 
     fun formatTimestamp(timestampMillis: Long): String {
         val formatter = SimpleDateFormat("d MMM yyyy, HH:mm", polishLocale)
+        return formatter.format(Date(timestampMillis))
+    }
+
+    fun formatDateTimeMillis(
+        timestampMillis: Long,
+        timeZone: java.util.TimeZone = java.util.TimeZone.getDefault(),
+    ): String {
+        val formatter = SimpleDateFormat("d MMMM yyyy, HH:mm", polishLocale).apply {
+            this.timeZone = timeZone
+        }
         return formatter.format(Date(timestampMillis))
     }
 }
