@@ -52,7 +52,25 @@ value class DateKey private constructor(val value: String) : Comparable<DateKey>
         ) ?: this
     }
 
+    fun daysUntil(other: DateKey): Long? {
+        val start = toEpochDay() ?: return null
+        val end = other.toEpochDay() ?: return null
+        return end - start
+    }
+
+    private fun toEpochDay(): Long? {
+        val parsed = toCalendarDay() ?: return null
+        val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
+            clear()
+            set(Calendar.YEAR, parsed.year)
+            set(Calendar.MONTH, parsed.month - 1)
+            set(Calendar.DAY_OF_MONTH, parsed.day)
+        }
+        return cal.timeInMillis / MILLIS_PER_DAY
+    }
+
     companion object {
+        private const val MILLIS_PER_DAY = 86_400_000L
         private val COMPACT_REGEX = Regex("^(\\d{4})(\\d{2})(\\d{2})$")
         private val ISO_REGEX = Regex("^(\\d{4})[-/.](\\d{1,2})[-/.](\\d{1,2})$")
         private val DMY_REGEX = Regex("^(\\d{1,2})[-/.](\\d{1,2})[-/.](\\d{4})$")

@@ -39,7 +39,6 @@ fun CalendarScreen(
     onReminderClick: (CalendarEvent) -> Unit,
     onEditClick: (CalendarEvent) -> Unit,
     onDeleteClick: (CalendarEvent) -> Unit,
-    onLoadDemoData: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -117,13 +116,6 @@ fun CalendarScreen(
                         stringResource(R.string.calendar_empty_events)
                     },
                     testTag = "calendar_empty_state",
-                    actionLabel = if (uiState.events.isEmpty()) {
-                        stringResource(R.string.demo_load_action)
-                    } else {
-                        null
-                    },
-                    actionTestTag = "calendar_empty_load_demo_button",
-                    onActionClick = if (uiState.events.isEmpty()) onLoadDemoData else null,
                 )
             }
         } else {

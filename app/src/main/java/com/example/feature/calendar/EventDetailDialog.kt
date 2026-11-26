@@ -334,7 +334,7 @@ private fun EventDetailInfoCard(
         }
         if (event.recurrence.isRepeating) {
             append(" • ")
-            append(stringResource(CalendarEntryVisuals.recurrenceLabelRes(event.recurrence)))
+            append(CalendarEntryVisuals.recurrenceLabel(event.recurrence))
         }
     }
 

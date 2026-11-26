@@ -31,25 +31,5 @@ internal object TransferFeedbackFormatter {
         TransferFeedback.Error -> {
             context.getString(R.string.transfer_error)
         }
-        is TransferFeedback.DemoLoaded -> {
-            context.getString(
-                R.string.demo_loaded_feedback,
-                feedback.eventsCount,
-                feedback.notesCount,
-            )
-        }
-        TransferFeedback.DemoAlreadyLoaded -> {
-            context.getString(R.string.demo_already_loaded_feedback)
-        }
-        is TransferFeedback.DemoCleared -> {
-            context.getString(
-                R.string.demo_cleared_feedback,
-                feedback.eventsCount,
-                feedback.notesCount,
-            )
-        }
-        TransferFeedback.DemoNothingToClear -> {
-            context.getString(R.string.demo_nothing_to_clear_feedback)
-        }
     }
 }

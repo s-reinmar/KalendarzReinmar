@@ -12,8 +12,6 @@ import com.example.domain.model.TransferFeedback
 import com.example.domain.port.DocumentStoragePort
 import com.example.domain.port.EventRepository
 import com.example.domain.port.NoteRepository
-import com.example.domain.port.ReminderPort
-import com.example.domain.service.DemoDataFactory
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -27,11 +25,9 @@ import kotlinx.coroutines.withContext
 class TransferController(
     private val eventRepository: EventRepository,
     private val noteRepository: NoteRepository,
-    private val reminderPort: ReminderPort,
     private val documentStorage: DocumentStoragePort,
     private val icsCodec: IcsEventCodec,
     private val csvCodec: CsvTransferCodec,
-    private val demoDataFactory: DemoDataFactory,
     private val scope: CoroutineScope,
     private val computationDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
@@ -148,82 +144,6 @@ class TransferController(
         }
     }
 
-    fun loadDemoData() {
-        scope.launch {
-            val existingEvents = eventRepository.observeEvents().first()
-            val existingNotes = noteRepository.observeNotes().first()
-            val dataset = demoDataFactory.buildDataset()
-
-            val existingEventTitles = existingEvents.mapTo(HashSet()) { it.title }
-            val existingNoteTitles = existingNotes.mapTo(HashSet()) { it.title }
-
-            val missingEvents = dataset.events.filter { it.title !in existingEventTitles }
-            val missingNotes = dataset.notes.filter { it.title !in existingNoteTitles }
-
-            if (missingEvents.isEmpty() && missingNotes.isEmpty()) {
-                _feedback.emit(TransferFeedback.DemoAlreadyLoaded)
-                return@launch
-            }
-
-            val insertedEvents = if (missingEvents.isNotEmpty()) {
-                eventRepository.addEvents(missingEvents)
-            } else {
-                emptyList()
-            }
-            insertedEvents.filter { it.hasReminder }.forEach(reminderPort::schedule)
-
-            val allEventsByTitle = (existingEvents + insertedEvents).associateBy { it.title }
-            val linkedNotes = missingNotes.map { note ->
-                val attachedIds = demoDataFactory
-                    .attachedEventTitlesForDemoNote(note.title)
-                    .mapNotNull { title -> allEventsByTitle[title]?.id }
-                note.copy(attachedEventIds = attachedIds)
-            }
-
-            val insertedNotesCount = if (linkedNotes.isNotEmpty()) {
-                noteRepository.addNotes(linkedNotes)
-            } else {
-                0
-            }
-
-            _feedback.emit(
-                TransferFeedback.DemoLoaded(
-                    eventsCount = insertedEvents.size,
-                    notesCount = insertedNotesCount,
-                )
-            )
-        }
-    }
-
-    fun clearDemoData() {
-        scope.launch {
-            val demoEvents = eventRepository.observeEvents().first()
-                .filter(demoDataFactory::isDemoEvent)
-            val demoNotes = noteRepository.observeNotes().first()
-                .filter(demoDataFactory::isDemoNote)
-
-            if (demoEvents.isEmpty() && demoNotes.isEmpty()) {
-                _feedback.emit(TransferFeedback.DemoNothingToClear)
-                return@launch
-            }
-
-            demoEvents.forEach { event ->
-                reminderPort.cancel(event.id)
-                eventRepository.deleteEvent(event.id)
-            }
-            demoNotes.forEach { note ->
-                noteRepository.deleteNote(note.id)
-            }
-
-            _feedback.emit(
-                TransferFeedback.DemoCleared(
-                    eventsCount = demoEvents.size,
-                    notesCount = demoNotes.size,
-                )
-            )
-        }
-    }
-
     private fun toCalendarEvent(item: ImportedEvent): CalendarEvent = CalendarEvent(
         id = EventId.UNASSIGNED,
         title = item.title,
@@ -233,7 +153,7 @@ class TransferController(
         timeRange = item.timeRange,
         description = item.description,
         recurrence = item.recurrence,
-        colorTag = item.entryType.defaultColorTag,
+        colorTag = item.colorTag ?: item.entryType.defaultColorTag,
         details = EventTypeDetails.defaultFor(item.entryType),
     )
 }

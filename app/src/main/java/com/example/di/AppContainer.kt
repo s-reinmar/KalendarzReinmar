@@ -7,21 +7,23 @@ import com.example.data.geocoding.NominatimGeocodingService
 import com.example.data.local.RoomEventRepository
 import com.example.data.local.RoomNoteRepository
 import com.example.data.location.AndroidLocationProvider
+import com.example.data.preferences.DataStoreColorPaletteRepository
 import com.example.data.time.SystemClockProvider
 import com.example.data.transfer.AndroidDocumentStorage
 import com.example.data.transfer.CsvTransferCodec
 import com.example.data.transfer.IcsEventCodec
 import com.example.domain.port.ClockProvider
+import com.example.domain.port.ColorPaletteRepository
 import com.example.domain.port.DeviceLocationProvider
 import com.example.domain.port.DocumentStoragePort
 import com.example.domain.port.EventRepository
 import com.example.domain.port.GeocodingService
 import com.example.domain.port.NoteRepository
 import com.example.domain.port.ReminderPort
-import com.example.domain.service.DemoDataFactory
 import com.example.feature.calendar.CalendarViewModel
 import com.example.feature.map.MapViewModel
 import com.example.feature.notes.NotesViewModel
+import com.example.feature.settings.SettingsViewModel
 import com.example.feature.shell.ShellViewModel
 import com.example.feature.transfer.TransferViewModel
 import com.example.reminder.AndroidReminderScheduler
@@ -39,7 +41,7 @@ class AppContainer(appContext: Context) {
     val documentStoragePort: DocumentStoragePort = AndroidDocumentStorage(context.contentResolver)
     val icsEventCodec: IcsEventCodec = IcsEventCodec(clockProvider)
     val csvTransferCodec: CsvTransferCodec = CsvTransferCodec()
-    val demoDataFactory: DemoDataFactory = DemoDataFactory(clockProvider)
+    val colorPaletteRepository: ColorPaletteRepository = DataStoreColorPaletteRepository(context)
 
     fun shellViewModelFactory(): ViewModelProvider.Factory = ShellViewModel.factory()
 
@@ -63,10 +65,13 @@ class AppContainer(appContext: Context) {
     fun transferViewModelFactory(): ViewModelProvider.Factory = TransferViewModel.factory(
         eventRepository = eventRepository,
         noteRepository = noteRepository,
-        reminderPort = reminderPort,
         documentStorage = documentStoragePort,
         icsCodec = icsEventCodec,
         csvCodec = csvTransferCodec,
-        demoDataFactory = demoDataFactory,
+    )
+
+    fun settingsViewModelFactory(): ViewModelProvider.Factory = SettingsViewModel.factory(
+        colorPaletteRepository = colorPaletteRepository,
+        clock = clockProvider,
     )
 }

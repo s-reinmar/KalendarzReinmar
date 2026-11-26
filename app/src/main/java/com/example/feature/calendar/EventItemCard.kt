@@ -143,7 +143,7 @@ internal fun EventItemCard(
                             }
                             if (event.recurrence.isRepeating) {
                                 Text(
-                                    text = stringResource(CalendarEntryVisuals.recurrenceLabelRes(event.recurrence)),
+                                    text = CalendarEntryVisuals.recurrenceLabel(event.recurrence),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,

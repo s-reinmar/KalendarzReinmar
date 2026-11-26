@@ -2,19 +2,25 @@ package com.example.feature.calendar
 
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
-import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.res.stringResource
 import com.example.R
 import com.example.domain.model.CalendarEntryType
+import com.example.domain.model.CustomRecurrenceUnit
 import com.example.domain.model.EventColorTag
 import com.example.domain.model.EventRecurrence
+import com.example.domain.model.PresetColorTag
 import com.example.domain.model.TaskPriority
 import com.example.domain.model.TransportMode
 import com.example.ui.theme.AppIcons
 import com.example.ui.theme.DarkInk
 import com.example.ui.theme.DarkPineContainer
 import com.example.ui.theme.DarkPinePrimary
+import com.example.ui.theme.DarkSurface
 import com.example.ui.theme.DarkTagAmber
 import com.example.ui.theme.DarkTagAmberContainer
 import com.example.ui.theme.DarkTagCobalt
@@ -23,6 +29,7 @@ import com.example.ui.theme.DarkTagPlum
 import com.example.ui.theme.DarkTagPlumContainer
 import com.example.ui.theme.DarkTerracotta
 import com.example.ui.theme.DarkTerracottaContainer
+import com.example.ui.theme.InkDark
 import com.example.ui.theme.OnPineGreenContainer
 import com.example.ui.theme.OnTagAmberContainer
 import com.example.ui.theme.OnTagCobaltContainer
@@ -38,6 +45,7 @@ import com.example.ui.theme.TagPlum
 import com.example.ui.theme.TagPlumContainer
 import com.example.ui.theme.Terracotta
 import com.example.ui.theme.TerracottaContainer
+import com.example.ui.theme.WarmPaper
 
 data class EntryColorPalette(
     val accent: Color,
@@ -75,21 +83,44 @@ object CalendarEntryVisuals {
     }
 
     @StringRes
-    fun colorLabelRes(tag: EventColorTag): Int = when (tag) {
-        EventColorTag.PINE -> R.string.entry_color_pine
-        EventColorTag.COBALT -> R.string.entry_color_cobalt
-        EventColorTag.AMBER -> R.string.entry_color_amber
-        EventColorTag.TERRACOTTA -> R.string.entry_color_terracotta
-        EventColorTag.PLUM -> R.string.entry_color_plum
+    fun presetColorLabelRes(preset: PresetColorTag): Int = when (preset) {
+        PresetColorTag.PINE -> R.string.entry_color_pine
+        PresetColorTag.COBALT -> R.string.entry_color_cobalt
+        PresetColorTag.AMBER -> R.string.entry_color_amber
+        PresetColorTag.TERRACOTTA -> R.string.entry_color_terracotta
+        PresetColorTag.PLUM -> R.string.entry_color_plum
     }
 
-    @StringRes
-    fun recurrenceLabelRes(recurrence: EventRecurrence): Int = when (recurrence) {
-        EventRecurrence.NONE -> R.string.recurrence_none
-        EventRecurrence.DAILY -> R.string.recurrence_daily
-        EventRecurrence.WEEKLY -> R.string.recurrence_weekly
-        EventRecurrence.MONTHLY -> R.string.recurrence_monthly
-        EventRecurrence.YEARLY -> R.string.recurrence_yearly
+    @Composable
+    fun colorLabel(tag: EventColorTag): String = when (tag) {
+        is EventColorTag.Preset -> stringResource(presetColorLabelRes(tag.preset))
+        is EventColorTag.CustomRgb -> tag.hexString
+    }
+
+    @Composable
+    fun recurrenceLabel(recurrence: EventRecurrence): String = when (recurrence) {
+        EventRecurrence.None -> stringResource(R.string.recurrence_none)
+        EventRecurrence.Daily -> stringResource(R.string.recurrence_daily)
+        EventRecurrence.Weekly -> stringResource(R.string.recurrence_weekly)
+        EventRecurrence.Monthly -> stringResource(R.string.recurrence_monthly)
+        EventRecurrence.Yearly -> stringResource(R.string.recurrence_yearly)
+        is EventRecurrence.Custom -> formatCustomRecurrenceLabel(recurrence)
+    }
+
+    @Composable
+    private fun formatCustomRecurrenceLabel(recurrence: EventRecurrence.Custom): String {
+        val n = recurrence.interval
+        return when (recurrence.unit) {
+            CustomRecurrenceUnit.HOURS -> when {
+                n == 1 -> stringResource(R.string.recurrence_every_one_hour)
+                n % 10 in 2..4 && n % 100 !in 12..14 -> stringResource(R.string.recurrence_every_few_hours, n)
+                else -> stringResource(R.string.recurrence_every_many_hours, n)
+            }
+            CustomRecurrenceUnit.DAYS -> when (n) {
+                1 -> stringResource(R.string.recurrence_every_one_day)
+                else -> stringResource(R.string.recurrence_every_many_days, n)
+            }
+        }
     }
 
     @StringRes
@@ -108,23 +139,56 @@ object CalendarEntryVisuals {
         TransportMode.OTHER -> R.string.transport_other
     }
 
+    fun contrastingOnColor(red: Int, green: Int, blue: Int): Color {
+        val perceivedLuminance = (0.299 * red) + (0.587 * green) + (0.114 * blue)
+        return if (perceivedLuminance > 155.0) InkDark else WarmPaper
+    }
+
     @Composable
-    fun palette(tag: EventColorTag, darkTheme: Boolean = isSystemInDarkTheme()): EntryColorPalette =
+    fun palette(
+        tag: EventColorTag,
+        darkTheme: Boolean = MaterialTheme.colorScheme.background.luminance() < 0.35f,
+    ): EntryColorPalette =
+        when (tag) {
+            is EventColorTag.Preset -> presetPalette(tag.preset, darkTheme)
+            is EventColorTag.CustomRgb -> customRgbPalette(tag, darkTheme)
+        }
+
+    private fun presetPalette(preset: PresetColorTag, darkTheme: Boolean): EntryColorPalette =
         if (darkTheme) {
-            when (tag) {
-                EventColorTag.PINE -> EntryColorPalette(DarkPinePrimary, DarkPineContainer, DarkInk)
-                EventColorTag.COBALT -> EntryColorPalette(DarkTagCobalt, DarkTagCobaltContainer, DarkInk)
-                EventColorTag.AMBER -> EntryColorPalette(DarkTagAmber, DarkTagAmberContainer, DarkInk)
-                EventColorTag.TERRACOTTA -> EntryColorPalette(DarkTerracotta, DarkTerracottaContainer, DarkInk)
-                EventColorTag.PLUM -> EntryColorPalette(DarkTagPlum, DarkTagPlumContainer, DarkInk)
+            when (preset) {
+                PresetColorTag.PINE -> EntryColorPalette(DarkPinePrimary, DarkPineContainer, DarkInk)
+                PresetColorTag.COBALT -> EntryColorPalette(DarkTagCobalt, DarkTagCobaltContainer, DarkInk)
+                PresetColorTag.AMBER -> EntryColorPalette(DarkTagAmber, DarkTagAmberContainer, DarkInk)
+                PresetColorTag.TERRACOTTA -> EntryColorPalette(DarkTerracotta, DarkTerracottaContainer, DarkInk)
+                PresetColorTag.PLUM -> EntryColorPalette(DarkTagPlum, DarkTagPlumContainer, DarkInk)
             }
         } else {
-            when (tag) {
-                EventColorTag.PINE -> EntryColorPalette(PineGreen, PineGreenContainer, OnPineGreenContainer)
-                EventColorTag.COBALT -> EntryColorPalette(TagCobalt, TagCobaltContainer, OnTagCobaltContainer)
-                EventColorTag.AMBER -> EntryColorPalette(TagAmber, TagAmberContainer, OnTagAmberContainer)
-                EventColorTag.TERRACOTTA -> EntryColorPalette(Terracotta, TerracottaContainer, OnTerracottaContainer)
-                EventColorTag.PLUM -> EntryColorPalette(TagPlum, TagPlumContainer, OnTagPlumContainer)
+            when (preset) {
+                PresetColorTag.PINE -> EntryColorPalette(PineGreen, PineGreenContainer, OnPineGreenContainer)
+                PresetColorTag.COBALT -> EntryColorPalette(TagCobalt, TagCobaltContainer, OnTagCobaltContainer)
+                PresetColorTag.AMBER -> EntryColorPalette(TagAmber, TagAmberContainer, OnTagAmberContainer)
+                PresetColorTag.TERRACOTTA -> EntryColorPalette(Terracotta, TerracottaContainer, OnTerracottaContainer)
+                PresetColorTag.PLUM -> EntryColorPalette(TagPlum, TagPlumContainer, OnTagPlumContainer)
             }
         }
+
+    private fun customRgbPalette(tag: EventColorTag.CustomRgb, darkTheme: Boolean): EntryColorPalette {
+        val base = Color(red = tag.red, green = tag.green, blue = tag.blue)
+        return if (darkTheme) {
+            val perceivedLuminance = (0.299 * tag.red) + (0.587 * tag.green) + (0.114 * tag.blue)
+            val accent = if (perceivedLuminance < 70.0) lerp(base, DarkInk, 0.35f) else base
+            EntryColorPalette(
+                accent = accent,
+                container = lerp(DarkSurface, base, 0.32f),
+                onContainer = lerp(base, DarkInk, 0.78f),
+            )
+        } else {
+            EntryColorPalette(
+                accent = base,
+                container = lerp(WarmPaper, base, 0.18f),
+                onContainer = lerp(base, InkDark, 0.62f),
+            )
+        }
+    }
 }

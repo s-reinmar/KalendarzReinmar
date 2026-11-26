@@ -9,6 +9,7 @@ data class ImportedEvent(
     val timeRange: EventTimeRange? = null,
     val description: String = "",
     val recurrence: EventRecurrence = EventRecurrence.NONE,
+    val colorTag: EventColorTag? = null,
 )
 
 data class ImportedNote(
@@ -30,8 +31,4 @@ sealed interface TransferFeedback {
     data class ExportedNotes(val count: Int) : TransferFeedback
     data object NothingToImport : TransferFeedback
     data object Error : TransferFeedback
-    data class DemoLoaded(val eventsCount: Int, val notesCount: Int) : TransferFeedback
-    data object DemoAlreadyLoaded : TransferFeedback
-    data class DemoCleared(val eventsCount: Int, val notesCount: Int) : TransferFeedback
-    data object DemoNothingToClear : TransferFeedback
 }

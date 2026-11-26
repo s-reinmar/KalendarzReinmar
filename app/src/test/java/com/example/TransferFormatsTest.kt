@@ -4,7 +4,9 @@ import com.example.data.transfer.CsvTransferCodec
 import com.example.data.transfer.IcsEventCodec
 import com.example.domain.model.CalendarEntryType
 import com.example.domain.model.CalendarEvent
+import com.example.domain.model.CustomRecurrenceUnit
 import com.example.domain.model.DateKey
+import com.example.domain.model.EventColorTag
 import com.example.domain.model.EventId
 import com.example.domain.model.EventRecurrence
 import com.example.domain.model.EventTimeRange
@@ -123,5 +125,42 @@ class TransferFormatsTest {
         assertEquals(1, parsed.notes.size)
         assertEquals("Lista", parsed.notes[0].title)
         assertEquals("Punkt 1\nPunkt 2, \"cytat\"", parsed.notes[0].content)
+    }
+
+    @Test
+    fun icsAndCsvPreserveCustomRecurrenceAndRgbColorTag() {
+        val customColor = EventColorTag.fromRgb(42, 180, 155)
+        val events = listOf(
+            CalendarEvent(
+                id = EventId(1),
+                title = "Leki",
+                dateKey = requireNotNull(DateKey.parseOrNull("2026-11-25")),
+                isAllDay = false,
+                timeRange = EventTimeRange(TimeOfDay.fromHourMinute(8, 0), TimeOfDay.fromHourMinute(8, 15)),
+                recurrence = EventRecurrence.custom(6, CustomRecurrenceUnit.HOURS),
+                colorTag = customColor,
+            ),
+            CalendarEvent(
+                id = EventId(2),
+                title = "Podlewanie",
+                dateKey = requireNotNull(DateKey.parseOrNull("2026-11-26")),
+                recurrence = EventRecurrence.custom(3, CustomRecurrenceUnit.DAYS),
+                colorTag = EventColorTag.fromRgb(220, 80, 40),
+            ),
+        )
+
+        val icsParsed = icsCodec.parse(icsCodec.export(events))
+        assertEquals(2, icsParsed.size)
+        assertEquals(EventRecurrence.custom(6, CustomRecurrenceUnit.HOURS), icsParsed[0].recurrence)
+        assertEquals(customColor, icsParsed[0].colorTag)
+        assertEquals(EventRecurrence.custom(3, CustomRecurrenceUnit.DAYS), icsParsed[1].recurrence)
+        assertEquals(EventColorTag.fromRgb(220, 80, 40), icsParsed[1].colorTag)
+
+        val csvParsed = csvCodec.parse(csvCodec.exportEvents(events), preferNotesWhenAmbiguous = false)
+        assertEquals(2, csvParsed.events.size)
+        assertEquals(EventRecurrence.custom(6, CustomRecurrenceUnit.HOURS), csvParsed.events[0].recurrence)
+        assertEquals(customColor, csvParsed.events[0].colorTag)
+        assertEquals(EventRecurrence.custom(3, CustomRecurrenceUnit.DAYS), csvParsed.events[1].recurrence)
+        assertEquals(EventColorTag.fromRgb(220, 80, 40), csvParsed.events[1].colorTag)
     }
 }

@@ -2,6 +2,7 @@ package com.example.fakes
 
 import com.example.domain.model.CalendarDay
 import com.example.domain.model.CalendarEvent
+import com.example.domain.model.ColorWheelSnapshot
 import com.example.domain.model.DateKey
 import com.example.domain.model.DeviceLocationResult
 import com.example.domain.model.EventId
@@ -11,14 +12,19 @@ import com.example.domain.model.GeocodingResult
 import com.example.domain.model.Note
 import com.example.domain.model.NoteDraft
 import com.example.domain.model.NoteId
+import com.example.domain.model.PaletteId
+import com.example.domain.model.PersistedColorWheelState
 import com.example.domain.model.ReminderTime
+import com.example.domain.model.SavedColorPalette
 import com.example.domain.port.ClockProvider
+import com.example.domain.port.ColorPaletteRepository
 import com.example.domain.port.DeviceLocationProvider
 import com.example.domain.port.DocumentStoragePort
 import com.example.domain.port.EventRepository
 import com.example.domain.port.GeocodingService
 import com.example.domain.port.NoteRepository
 import com.example.domain.port.ReminderPort
+import com.example.domain.service.ColorHarmonyEngine
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -241,5 +247,38 @@ class FakeDocumentStorage : DocumentStoragePort {
         if (failWrites) return Result.failure(IllegalStateException("Write failed"))
         files[documentUri] = content
         return Result.success(Unit)
+    }
+}
+
+class FakeColorPaletteRepository(
+    initialState: PersistedColorWheelState = PersistedColorWheelState(
+        activeSnapshot = ColorHarmonyEngine.defaultSnapshot(),
+        savedPalettes = emptyList(),
+    ),
+) : ColorPaletteRepository {
+    private val stateFlow = MutableStateFlow(initialState)
+    val savedSnapshots = mutableListOf<ColorWheelSnapshot>()
+
+    override fun observeState(): Flow<PersistedColorWheelState> = stateFlow.asStateFlow()
+
+    override suspend fun saveCurrentSnapshot(snapshot: ColorWheelSnapshot) {
+        savedSnapshots.add(snapshot)
+        stateFlow.update { it.copy(activeSnapshot = snapshot) }
+    }
+
+    override suspend fun addSavedPalette(palette: SavedColorPalette) {
+        stateFlow.update { current ->
+            current.copy(
+                savedPalettes = listOf(palette) + current.savedPalettes.filterNot { it.id == palette.id },
+            )
+        }
+    }
+
+    override suspend fun deleteSavedPalette(id: PaletteId) {
+        stateFlow.update { current ->
+            current.copy(
+                savedPalettes = current.savedPalettes.filterNot { it.id == id },
+            )
+        }
     }
 }

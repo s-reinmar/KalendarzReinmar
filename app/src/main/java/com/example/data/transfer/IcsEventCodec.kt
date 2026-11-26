@@ -2,7 +2,9 @@ package com.example.data.transfer
 
 import com.example.domain.model.CalendarEntryType
 import com.example.domain.model.CalendarEvent
+import com.example.domain.model.CustomRecurrenceUnit
 import com.example.domain.model.DateKey
+import com.example.domain.model.EventColorTag
 import com.example.domain.model.EventRecurrence
 import com.example.domain.model.EventTimeRange
 import com.example.domain.model.ImportedEvent
@@ -49,8 +51,9 @@ class IcsEventCodec(
             event.location?.sanitizedLabel?.let { label ->
                 sb.append("LOCATION:${escapeText(label)}\r\n")
             }
-            if (event.recurrence.isRepeating) {
-                sb.append("RRULE:FREQ=${event.recurrence.code}\r\n")
+            sb.append("X-REINMAR-COLOR:${event.colorTag.code}\r\n")
+            formatRrule(event.recurrence)?.let { rrule ->
+                sb.append("RRULE:$rrule\r\n")
             }
             sb.append("END:VEVENT\r\n")
         }
@@ -76,7 +79,8 @@ class IcsEventCodec(
         var currentEndTime: TimeOfDay? = null
         var currentEntryType: CalendarEntryType = CalendarEntryType.EVENT
         var currentDescription = ""
-        var currentRecurrence = EventRecurrence.NONE
+        var currentRecurrence: EventRecurrence = EventRecurrence.NONE
+        var currentColorTag: EventColorTag? = null
 
         for (line in lines) {
             val trimmed = line.trim()
@@ -89,6 +93,7 @@ class IcsEventCodec(
                 currentEntryType = CalendarEntryType.EVENT
                 currentDescription = ""
                 currentRecurrence = EventRecurrence.NONE
+                currentColorTag = null
                 continue
             }
             if (trimmed.equals("END:VEVENT", ignoreCase = true)) {
@@ -108,6 +113,7 @@ class IcsEventCodec(
                             timeRange = timeRange,
                             description = currentDescription,
                             recurrence = currentRecurrence,
+                            colorTag = currentColorTag,
                         )
                     )
                 }
@@ -137,6 +143,15 @@ class IcsEventCodec(
                     currentEntryType = CalendarEntryType.fromCodeOrDefault(firstCategory)
                 }
                 "DESCRIPTION" -> currentDescription = unescapeText(valuePart)
+                "X-REINMAR-COLOR" -> {
+                    val rawColor = valuePart.trim()
+                    if (rawColor.isNotEmpty()) {
+                        currentColorTag = EventColorTag.fromCodeOrDefault(
+                            raw = rawColor,
+                            fallback = currentEntryType.defaultColorTag,
+                        )
+                    }
+                }
                 "RRULE" -> currentRecurrence = parseRruleRecurrence(valuePart)
             }
         }
@@ -153,11 +168,39 @@ class IcsEventCodec(
         return TimeOfDay.fromHourMinute(hour, minute)
     }
 
+    private fun formatRrule(recurrence: EventRecurrence): String? = when (recurrence) {
+        EventRecurrence.None -> null
+        EventRecurrence.Daily -> "FREQ=DAILY"
+        EventRecurrence.Weekly -> "FREQ=WEEKLY"
+        EventRecurrence.Monthly -> "FREQ=MONTHLY"
+        EventRecurrence.Yearly -> "FREQ=YEARLY"
+        is EventRecurrence.Custom -> when (recurrence.unit) {
+            CustomRecurrenceUnit.DAYS -> "FREQ=DAILY;INTERVAL=${recurrence.interval}"
+            CustomRecurrenceUnit.HOURS -> "FREQ=HOURLY;INTERVAL=${recurrence.interval}"
+        }
+    }
+
     private fun parseRruleRecurrence(raw: String): EventRecurrence {
-        val freqPart = raw.split(';')
-            .firstOrNull { it.trim().startsWith("FREQ=", ignoreCase = true) }
-            ?.substringAfter('=')
-        return EventRecurrence.fromCodeOrDefault(freqPart)
+        val tokens = raw.split(';')
+            .mapNotNull { part ->
+                val idx = part.indexOf('=')
+                if (idx <= 0) null else part.substring(0, idx).trim().uppercase(Locale.US) to part.substring(idx + 1).trim().uppercase(Locale.US)
+            }
+            .toMap()
+        val freq = tokens["FREQ"] ?: return EventRecurrence.NONE
+        val interval = tokens["INTERVAL"]?.toIntOrNull()
+        return when (freq) {
+            "HOURLY" -> EventRecurrence.custom(
+                interval = interval ?: 1,
+                unit = CustomRecurrenceUnit.HOURS,
+            )
+            "DAILY" -> if (interval != null && interval > 1) {
+                EventRecurrence.custom(interval = interval, unit = CustomRecurrenceUnit.DAYS)
+            } else {
+                EventRecurrence.DAILY
+            }
+            else -> EventRecurrence.fromCodeOrDefault(freq)
+        }
     }
 
     private fun formatCompactTime(time: TimeOfDay): String =

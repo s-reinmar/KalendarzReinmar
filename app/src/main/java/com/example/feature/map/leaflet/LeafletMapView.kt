@@ -1,5 +1,6 @@
 package com.example.feature.map.leaflet
 
+import android.webkit.WebView
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -57,6 +58,7 @@ fun LeafletMapView(
     val latestOnMapTap by rememberUpdatedState(onMapTap)
     val latestOnMarkerTap by rememberUpdatedState(onMarkerTap)
     val lifecycleOwner = LocalLifecycleOwner.current
+    val sessionsByView = remember { mutableMapOf<WebView, LeafletWebViewSession>() }
     var activeSession by remember { mutableStateOf<LeafletWebViewSession?>(null) }
     var sessionKey by remember { mutableIntStateOf(0) }
     var autoReloadCount by remember { mutableIntStateOf(0) }
@@ -108,6 +110,18 @@ fun LeafletMapView(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    DisposableEffect(Unit) {
+        onDispose {
+            val remaining = sessionsByView.values.toList()
+            sessionsByView.clear()
+            activeSession = null
+            remaining.forEach { session ->
+                controller.detach(session.webView)
+                session.destroyOnce(rendererAlreadyGone = false)
+            }
+        }
+    }
+
     if (rendererCrashed) {
         MapCrashFallback(
             onReload = {
@@ -137,6 +151,7 @@ fun LeafletMapView(
                     onMarkerTap = { latestOnMarkerTap(it) },
                     onRendererGone = { goneSession ->
                         controller.detach(goneSession.webView)
+                        sessionsByView.remove(goneSession.webView)
                         if (activeSession === goneSession) {
                             activeSession = null
                         }
@@ -149,16 +164,17 @@ fun LeafletMapView(
                         }
                     },
                 )
+                sessionsByView[createdSession.webView] = createdSession
                 activeSession = createdSession
                 createdSession.webView
             },
             onRelease = { view ->
                 controller.detach(view)
-                val session = activeSession
-                if (session != null && session.webView === view) {
+                val session = sessionsByView.remove(view)
+                if (activeSession?.webView === view) {
                     activeSession = null
-                    session.destroyOnce(rendererAlreadyGone = false)
                 }
+                session?.destroyOnce(rendererAlreadyGone = false)
             },
             modifier = modifier,
         )

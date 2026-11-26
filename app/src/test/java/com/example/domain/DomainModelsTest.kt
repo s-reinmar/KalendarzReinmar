@@ -3,6 +3,7 @@ package com.example.domain
 import com.example.data.local.CalendarEventMapper
 import com.example.domain.model.CalendarEntryType
 import com.example.domain.model.CalendarEvent
+import com.example.domain.model.CustomRecurrenceUnit
 import com.example.domain.model.DateKey
 import com.example.domain.model.EventColorTag
 import com.example.domain.model.EventDraft
@@ -17,11 +18,9 @@ import com.example.domain.model.TaskPriority
 import com.example.domain.model.TimeOfDay
 import com.example.domain.model.TransportMode
 import com.example.domain.service.CalendarGridBuilder
-import com.example.domain.service.DemoDataFactory
 import com.example.domain.service.EventScheduleMatcher
 import com.example.domain.service.PolishDateFormatter
 import com.example.domain.service.YearMonth
-import com.example.fakes.FakeClockProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -209,16 +208,62 @@ class DomainModelsTest {
     }
 
     @Test
-    fun demoDataFactoryCreatesAllFiveEntryTypesWithLocations() {
-        val factory = DemoDataFactory(FakeClockProvider())
-        val dataset = factory.buildDataset()
+    fun customRgbColorTagParsesFormatsAndRoundTripsThroughMapper() {
+        val custom = EventColorTag.fromRgb(233, 30, 99)
+        assertEquals("#E91E63", custom.hexString)
+        assertEquals("#E91E63", custom.code)
+        assertEquals(custom, EventColorTag.fromCodeOrDefault("#e91e63"))
+        assertEquals(custom, EventColorTag.fromHexOrNull("E91E63"))
+        assertNull(EventColorTag.fromHexOrNull("#12345"))
+        assertEquals(EventColorTag.PINE, EventColorTag.fromCodeOrDefault("invalid"))
 
-        assertEquals(5, dataset.events.size)
-        assertEquals(3, dataset.notes.size)
-        assertEquals(CalendarEntryType.entries.toSet(), dataset.events.map { it.entryType }.toSet())
-        assertTrue(dataset.events.count { it.hasLocation } >= 4)
-        assertTrue(dataset.events.all { factory.isDemoEvent(it) })
-        assertTrue(dataset.notes.all { factory.isDemoNote(it) })
-        assertNotNull(dataset.events.first().reminderTime)
+        val event = CalendarEvent(
+            id = EventId(42),
+            title = "Kolorowe spotkanie",
+            dateKey = requireNotNull(DateKey.parseOrNull("2026-11-25")),
+            colorTag = custom,
+            recurrence = EventRecurrence.custom(3, CustomRecurrenceUnit.DAYS),
+        )
+        val mapped = CalendarEventMapper.toDomain(CalendarEventMapper.toEntity(event))
+        assertEquals(event, mapped)
+    }
+
+    @Test
+    fun customRecurrenceMatchesEveryNDaysAndEveryNHours() {
+        val start = requireNotNull(DateKey.parseOrNull("2026-11-01"))
+        val everyThreeDays = CalendarEvent(
+            id = EventId(10),
+            title = "Trening",
+            dateKey = start,
+            recurrence = EventRecurrence.custom(3, CustomRecurrenceUnit.DAYS),
+        )
+        assertTrue(EventScheduleMatcher.occursOn(everyThreeDays, start))
+        assertFalse(EventScheduleMatcher.occursOn(everyThreeDays, start.plusDays(1)))
+        assertFalse(EventScheduleMatcher.occursOn(everyThreeDays, start.plusDays(2)))
+        assertTrue(EventScheduleMatcher.occursOn(everyThreeDays, start.plusDays(3)))
+        assertTrue(EventScheduleMatcher.occursOn(everyThreeDays, start.plusDays(6)))
+
+        val everyThirtySixHours = CalendarEvent(
+            id = EventId(11),
+            title = "Pomiar",
+            dateKey = start,
+            isAllDay = false,
+            timeRange = EventTimeRange(TimeOfDay.fromHourMinute(8, 0), TimeOfDay.fromHourMinute(8, 30)),
+            recurrence = EventRecurrence.custom(36, CustomRecurrenceUnit.HOURS),
+        )
+        // Day 0: 08:00 -> yes, Day 1: 20:00 -> yes, Day 2: none -> no, Day 3: 08:00 -> yes
+        assertTrue(EventScheduleMatcher.occursOn(everyThirtySixHours, start))
+        assertTrue(EventScheduleMatcher.occursOn(everyThirtySixHours, start.plusDays(1)))
+        assertFalse(EventScheduleMatcher.occursOn(everyThirtySixHours, start.plusDays(2)))
+        assertTrue(EventScheduleMatcher.occursOn(everyThirtySixHours, start.plusDays(3)))
+
+        assertEquals(
+            EventRecurrence.custom(6, CustomRecurrenceUnit.HOURS),
+            EventRecurrence.fromCodeOrDefault("CUSTOM:HOURS:6"),
+        )
+        assertEquals(
+            EventRecurrence.custom(4, CustomRecurrenceUnit.DAYS),
+            EventRecurrence.fromCodeOrDefault("CUSTOM:DAYS:4"),
+        )
     }
 }

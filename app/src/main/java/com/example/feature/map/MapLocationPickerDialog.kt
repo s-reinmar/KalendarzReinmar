@@ -126,15 +126,16 @@ fun MapLocationPickerDialog(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
+                    val pickedPoint = uiState.pickedPoint
                     val statusText = when {
                         uiState.isResolvingAddress -> stringResource(R.string.map_resolving_address)
                         !uiState.resolvedAddress.isNullOrBlank() -> stringResource(
                             R.string.map_selected_point,
                             uiState.resolvedAddress.orEmpty(),
                         )
-                        uiState.pickedPoint != null -> stringResource(
+                        pickedPoint != null -> stringResource(
                             R.string.location_coordinates_label,
-                            uiState.pickedPoint!!.formatCoordinates(),
+                            pickedPoint.formatCoordinates(),
                         )
                         else -> stringResource(R.string.location_picker_hint)
                     }

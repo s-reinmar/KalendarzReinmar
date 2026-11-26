@@ -1,12 +1,17 @@
 package com.example
 
 import android.content.Intent
+import android.graphics.Color as AndroidColor
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.luminance
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.di.AppContainer
@@ -14,6 +19,7 @@ import com.example.domain.model.EventId
 import com.example.feature.calendar.CalendarViewModel
 import com.example.feature.map.MapViewModel
 import com.example.feature.notes.NotesViewModel
+import com.example.feature.settings.SettingsViewModel
 import com.example.feature.shell.AppShellView
 import com.example.feature.shell.ShellViewModel
 import com.example.feature.transfer.TransferViewModel
@@ -33,7 +39,35 @@ class MainActivity : ComponentActivity() {
         extractNotificationEventId(intent)
 
         setContent {
-            KalendarzReinmarTheme {
+            val settingsVm: SettingsViewModel = viewModel(factory = appContainer.settingsViewModelFactory())
+            val settingsState by settingsVm.controller.uiState.collectAsStateWithLifecycle()
+            val activeThemeSwatches = if (settingsState.applyToAppTheme) {
+                settingsState.swatches
+            } else {
+                null
+            }
+
+            KalendarzReinmarTheme(
+                customPaletteSwatches = activeThemeSwatches,
+                surfaceMode = settingsState.surfaceMode,
+            ) {
+                val isDarkTopChrome = MaterialTheme.colorScheme.primaryContainer.luminance() < 0.42f
+                val isDarkBottomChrome = MaterialTheme.colorScheme.surfaceContainerHigh.luminance() < 0.42f
+                SideEffect {
+                    enableEdgeToEdge(
+                        statusBarStyle = if (isDarkTopChrome) {
+                            SystemBarStyle.dark(AndroidColor.TRANSPARENT)
+                        } else {
+                            SystemBarStyle.light(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT)
+                        },
+                        navigationBarStyle = if (isDarkBottomChrome) {
+                            SystemBarStyle.dark(AndroidColor.TRANSPARENT)
+                        } else {
+                            SystemBarStyle.light(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT)
+                        },
+                    )
+                }
+
                 val shellVm: ShellViewModel = viewModel(factory = appContainer.shellViewModelFactory())
                 val calendarVm: CalendarViewModel = viewModel(factory = appContainer.calendarViewModelFactory())
                 val mapVm: MapViewModel = viewModel(factory = appContainer.mapViewModelFactory())
@@ -56,6 +90,7 @@ class MainActivity : ComponentActivity() {
                     mapController = mapVm.controller,
                     notesController = notesVm.controller,
                     transferController = transferVm.controller,
+                    settingsController = settingsVm.controller,
                 )
             }
         }

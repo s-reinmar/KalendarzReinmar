@@ -3,6 +3,7 @@
 
     <string name="nav_calendar">Kalendarz</string>
     <string name="nav_notes">Notatki</string>
+    <string name="nav_settings">Ustawienia</string>
 
     <string name="calendar_prev_month">Poprzedni miesiąc</string>
     <string name="calendar_next_month">Następny miesiąc</string>
@@ -26,6 +27,7 @@
 
     <string name="cd_calendar_icon">Ikona kalendarza</string>
     <string name="cd_notes_icon">Ikona notatek</string>
+    <string name="cd_settings_icon">Ikona ustawień</string>
     <string name="cd_add_icon">Ikona dodawania</string>
     <string name="cd_event_icon">Ikona wydarzenia</string>
     <string name="cd_note_icon">Ikona notatki</string>
@@ -108,14 +110,7 @@
     <string name="map_renderer_crashed">Widok mapy został zresetowany</string>
     <string name="map_reload_action">Odśwież mapę</string>
 
-    <string name="menu_section_demo">Tryb demo</string>
     <string name="menu_section_transfer">Import i eksport</string>
-    <string name="demo_load_action">Załaduj dane demo</string>
-    <string name="demo_clear_action">Wyczyść dane demo</string>
-    <string name="demo_loaded_feedback">Załadowano dane demo: %1$d wydarzeń i %2$d notatek</string>
-    <string name="demo_already_loaded_feedback">Dane demo są już załadowane</string>
-    <string name="demo_cleared_feedback">Usunięto dane demo (%1$d wydarzeń, %2$d notatek)</string>
-    <string name="demo_nothing_to_clear_feedback">Brak danych demo do usunięcia</string>
     <string name="calendar_summary_count">Wydarzenia: %1$d</string>
     <string name="notes_summary_count">Notatki: %1$d</string>
 
@@ -145,6 +140,17 @@
     <string name="entry_color_amber">Bursztyn</string>
     <string name="entry_color_terracotta">Terakota</string>
     <string name="entry_color_plum">Śliwka</string>
+    <string name="entry_color_custom_rgb">Dowolny RGB</string>
+    <string name="entry_color_picker_title">Wybierz kolor RGB</string>
+    <string name="entry_color_picker_open_cd">Wybierz własny kolor RGB</string>
+    <string name="entry_color_hex_label">Kod koloru (HEX)</string>
+    <string name="entry_color_hex_error">Wpisz poprawny kod #RRGGBB</string>
+    <string name="entry_color_channel_red">Czerwony (R)</string>
+    <string name="entry_color_channel_green">Zielony (G)</string>
+    <string name="entry_color_channel_blue">Niebieski (B)</string>
+    <string name="entry_color_quick_swatches">Szybkie barwy</string>
+    <string name="entry_color_preview_sample">Podgląd etykiety</string>
+    <string name="entry_color_apply">Zastosuj kolor</string>
 
     <string name="entry_all_day_label">Cały dzień</string>
     <string name="entry_start_date_label">Data rozpoczęcia</string>
@@ -163,6 +169,18 @@
     <string name="recurrence_weekly">Co tydzień</string>
     <string name="recurrence_monthly">Co miesiąc</string>
     <string name="recurrence_yearly">Co rok</string>
+    <string name="recurrence_custom">Niestandardowe</string>
+    <string name="recurrence_custom_interval_label">Co ile</string>
+    <string name="recurrence_custom_unit_hours">Godziny</string>
+    <string name="recurrence_custom_unit_days">Dni</string>
+    <string name="recurrence_custom_decrease_cd">Zmniejsz odstęp powtarzania</string>
+    <string name="recurrence_custom_increase_cd">Zwiększ odstęp powtarzania</string>
+    <string name="recurrence_custom_summary">Powtarzaj: %1$s</string>
+    <string name="recurrence_every_one_hour">Co godzinę</string>
+    <string name="recurrence_every_few_hours">Co %1$d godziny</string>
+    <string name="recurrence_every_many_hours">Co %1$d godzin</string>
+    <string name="recurrence_every_one_day">Co 1 dzień</string>
+    <string name="recurrence_every_many_days">Co %1$d dni</string>
 
     <!-- Standard Event specific -->
     <string name="field_guests_label">Goście / uczestnicy (po przecinku)</string>
@@ -261,4 +279,57 @@
     <string name="note_attachment_remove_cd">Odepnij wydarzenie od notatki</string>
     <string name="note_attachment_open_cd">Otwórz szczegóły wydarzenia %1$s</string>
     <string name="note_editor_active_format_prefix">Aktywny styl: %1$s</string>
+
+    <!-- Settings: Color Wheel -->
+    <string name="settings_color_wheel_title">Ustawienia kolorystyczne (Color Wheel)</string>
+    <string name="settings_color_wheel_subtitle">Reguła: %1$s</string>
+    <string name="settings_color_wheel_expand_cd">Rozwiń ustawienia kolorystyczne</string>
+    <string name="settings_color_wheel_collapse_cd">Zwiń ustawienia kolorystyczne</string>
+    <string name="settings_harmony_section_label">Reguła harmonii</string>
+    <string name="settings_harmony_custom">Własna (Custom)</string>
+    <string name="settings_harmony_analogous">Analogiczna</string>
+    <string name="settings_harmony_complementary">Dopełniająca</string>
+    <string name="settings_harmony_split_complementary">Rozdzielona dopełniająca</string>
+    <string name="settings_harmony_triad">Triada</string>
+    <string name="settings_harmony_square">Kwadrat</string>
+    <string name="settings_harmony_compound">Złożona</string>
+    <string name="settings_harmony_shades">Odcienie (Shades)</string>
+    <string name="settings_harmony_monochromatic">Monochromatyczna</string>
+    <string name="settings_wheel_cd">Interaktywne koło barw HSV</string>
+    <string name="settings_wheel_hint">Dotknij lub przeciągnij punkt na kole barw</string>
+    <string name="settings_value_slider_label">Jasność (Value) — Próbka %1$d</string>
+    <string name="settings_value_slider_base_label">Jasność (Value) — Próbka %1$d (Baza)</string>
+    <string name="settings_value_percent">%1$d%%</string>
+    <string name="settings_swatch_base_tag">Baza</string>
+    <string name="settings_swatch_item_cd">Próbka %1$d, kolor %2$s</string>
+    <string name="settings_save_palette_action">Zapisz paletę</string>
+    <string name="settings_saved_palettes_title">Zapisane palety (%1$d)</string>
+    <string name="settings_saved_palettes_empty">Nie masz jeszcze zapisanych palet. Ustaw barwy na kole i zapisz pierwszą kompozycję.</string>
+    <string name="settings_save_dialog_title">Zapisz paletę kolorów</string>
+    <string name="settings_save_dialog_name_label">Nazwa palety</string>
+    <string name="settings_save_dialog_name_placeholder">np. Leśny poranek</string>
+    <string name="settings_save_dialog_name_error">Podaj nazwę palety</string>
+    <string name="settings_palette_restore_cd">Przywróć paletę %1$s</string>
+    <string name="settings_palette_delete_cd">Usuń paletę %1$s</string>
+    <string name="settings_palette_saved_feedback">Zapisano paletę „%1$s”</string>
+    <string name="settings_palette_restored_feedback">Przywrócono paletę „%1$s”</string>
+    <string name="settings_apply_theme_title">Zastosuj paletę do aplikacji</string>
+    <string name="settings_apply_theme_subtitle">Zmiany na kole barw aktualizują motyw aplikacji na żywo</string>
+    <string name="settings_reset_palette_action">Przywróć domyślne</string>
+    <string name="settings_color_count_label">Liczba kolorów harmonii (2–5)</string>
+    <string name="settings_color_count_few">%1$d kolory</string>
+    <string name="settings_color_count_many">%1$d kolorów</string>
+    <string name="settings_surface_mode_label">Styl tła i powierzchni</string>
+    <string name="settings_surface_mode_colorful">Barwny (z koła)</string>
+    <string name="settings_surface_mode_light">Jasny</string>
+    <string name="settings_surface_mode_dark">Ciemny barwny</string>
+    <string name="settings_color_wheel_subtitle_full">%1$s • %2$s • %3$s</string>
+
+    <!-- Application copyright footer -->
+    <string name="footer_copyright_prefix">Copyright by</string>
+    <string name="footer_author_handle">s-reinmar</string>
+    <string name="footer_copyright_suffix">, 2026</string>
+    <string name="footer_github_url">https://github.com/s-reinmar</string>
+    <string name="cd_footer_github_link">Otwórz konto GitHub s-reinmar</string>
+    <string name="footer_open_link_error">Nie udało się otworzyć linku GitHub</string>
 </resources>

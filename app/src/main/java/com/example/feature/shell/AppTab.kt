@@ -4,4 +4,5 @@ enum class AppTab {
     CALENDAR,
     MAP,
     NOTES,
+    SETTINGS,
 }

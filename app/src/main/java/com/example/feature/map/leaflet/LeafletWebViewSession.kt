@@ -20,7 +20,22 @@ import com.example.domain.model.GeoPoint
 
 private const val MAP_BASE_URL = "https://kalendarzreinmar.app/"
 private const val JS_BRIDGE_NAME = "ReinmarMapBridge"
-private const val DEFERRED_DESTROY_DELAY_MS = 120L
+
+/**
+ * Fallback WebViewClient kept during teardown so any late renderer termination
+ * is always handled safely instead of crashing the host process.
+ */
+private object TeardownSafeWebViewClient : WebViewClient() {
+    override fun shouldOverrideUrlLoading(
+        view: WebView?,
+        request: WebResourceRequest?,
+    ): Boolean = true
+
+    override fun onRenderProcessGone(
+        view: WebView?,
+        detail: RenderProcessGoneDetail?,
+    ): Boolean = true
+}
 
 internal class LeafletWebViewSession private constructor(
     val webView: WebView,
@@ -47,12 +62,10 @@ internal class LeafletWebViewSession private constructor(
 
         runCatching {
             if (!rendererAlreadyGone) {
-                webView.evaluateJavascript("window.ReinmarMap && window.ReinmarMap.dispose();", null)
                 webView.stopLoading()
-                webView.loadUrl("about:blank")
                 webView.onPause()
             }
-            webView.webViewClient = WebViewClient()
+            webView.webViewClient = TeardownSafeWebViewClient
             webView.webChromeClient = null
             webView.setOnTouchListener(null)
             webView.removeJavascriptInterface(JS_BRIDGE_NAME)
@@ -65,10 +78,10 @@ internal class LeafletWebViewSession private constructor(
                 webView.destroy()
             }
         }
-        if (rendererAlreadyGone) {
-            mainHandler.post(finalizeDestroy)
+        if (Looper.myLooper() == Looper.getMainLooper() && !rendererAlreadyGone) {
+            finalizeDestroy.run()
         } else {
-            mainHandler.postDelayed(finalizeDestroy, DEFERRED_DESTROY_DELAY_MS)
+            mainHandler.post(finalizeDestroy)
         }
     }
 
@@ -100,11 +113,11 @@ internal class LeafletWebViewSession private constructor(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                 )
                 setBackgroundColor(AndroidColor.parseColor("#EFECE4"))
-                // Software layer avoids Chromium GPU/ANGLE surface teardown crashes
-                // inside clipped Compose AndroidView containers and Dialog windows.
-                setLayerType(View.LAYER_TYPE_SOFTWARE, null)
+                // Use default hardware-accelerated pipeline; forcing LAYER_TYPE_SOFTWARE on
+                // full-screen Chromium WebView can exhaust renderer heap and trigger SIGKILL (-1).
+                setLayerType(View.LAYER_TYPE_NONE, null)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false)
+                    setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, true)
                 }
                 configureLeafletSettings(settings)
                 webChromeClient = WebChromeClient()

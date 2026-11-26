@@ -24,7 +24,6 @@ fun NotesScreen(
     onEditClick: (Note) -> Unit,
     onDeleteClick: (Note) -> Unit,
     onOpenAttachedEvent: (EventId) -> Unit,
-    onLoadDemoData: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -41,9 +40,6 @@ fun NotesScreen(
                     iconDescription = stringResource(R.string.cd_note_icon),
                     message = stringResource(R.string.notes_empty),
                     testTag = "notes_empty_state",
-                    actionLabel = stringResource(R.string.demo_load_action),
-                    actionTestTag = "notes_empty_load_demo_button",
-                    onActionClick = onLoadDemoData,
                 )
             }
         } else {

@@ -10,8 +10,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -52,6 +54,13 @@ private val NAV_DESTINATIONS = listOf(
         contentDescriptionRes = R.string.cd_notes_icon,
         testTag = "nav_tab_notes",
     ),
+    NavDestinationMeta(
+        tab = AppTab.SETTINGS,
+        labelRes = R.string.nav_settings,
+        iconRes = AppIcons.settings,
+        contentDescriptionRes = R.string.cd_settings_icon,
+        testTag = "nav_tab_settings",
+    ),
 )
 
 @Composable
@@ -59,11 +68,20 @@ internal fun AppNavigationRail(
     activeTab: AppTab,
     onSelectTab: (AppTab) -> Unit,
 ) {
+    val itemColors = NavigationRailItemDefaults.colors(
+        selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        selectedTextColor = MaterialTheme.colorScheme.primary,
+        indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
+        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+
     NavigationRail(
         modifier = Modifier
             .fillMaxHeight()
             .windowInsetsPadding(WindowInsets.safeDrawing),
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        contentColor = MaterialTheme.colorScheme.onSurface,
     ) {
         NAV_DESTINATIONS.forEach { dest ->
             NavigationRailItem(
@@ -77,6 +95,7 @@ internal fun AppNavigationRail(
                     )
                 },
                 label = { Text(stringResource(dest.labelRes)) },
+                colors = itemColors,
                 modifier = Modifier.testTag(dest.testTag),
             )
         }
@@ -87,10 +106,20 @@ internal fun AppNavigationRail(
 internal fun AppNavigationBar(
     activeTab: AppTab,
     onSelectTab: (AppTab) -> Unit,
+    windowInsets: WindowInsets = WindowInsets.navigationBars,
 ) {
+    val itemColors = NavigationBarItemDefaults.colors(
+        selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        selectedTextColor = MaterialTheme.colorScheme.primary,
+        indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
+        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+
     NavigationBar(
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        windowInsets = WindowInsets.navigationBars,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        windowInsets = windowInsets,
     ) {
         NAV_DESTINATIONS.forEach { dest ->
             NavigationBarItem(
@@ -104,6 +133,7 @@ internal fun AppNavigationBar(
                     )
                 },
                 label = { Text(stringResource(dest.labelRes)) },
+                colors = itemColors,
                 modifier = Modifier.testTag(dest.testTag),
             )
         }

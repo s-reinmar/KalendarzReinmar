@@ -10,6 +10,9 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import com.example.domain.model.HsvColor
+import com.example.domain.model.ThemeSurfaceMode
+import com.example.domain.service.ColorHarmonyEngine
 
 private val LightColorScheme = lightColorScheme(
     primary = PineGreen,
@@ -61,9 +64,18 @@ private val DarkColorScheme = darkColorScheme(
 fun KalendarzReinmarTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
+    customPaletteSwatches: List<HsvColor>? = null,
+    surfaceMode: ThemeSurfaceMode = ThemeSurfaceMode.COLORFUL,
     content: @Composable () -> Unit,
 ) {
     val colorScheme = when {
+        customPaletteSwatches != null &&
+            ColorHarmonyEngine.isValidSwatchCount(customPaletteSwatches.size) -> {
+            AppColorSchemeBuilder.build(
+                swatches = customPaletteSwatches,
+                surfaceMode = surfaceMode,
+            )
+        }
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)

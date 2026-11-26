@@ -1,5 +1,6 @@
 package com.example.feature.calendar
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -23,6 +24,10 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -31,6 +36,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.R
 import com.example.domain.model.CalendarEntryType
+import com.example.domain.model.CustomRecurrenceUnit
 import com.example.domain.model.DateKey
 import com.example.domain.model.EventLocation
 import com.example.domain.model.EventRecurrence
@@ -38,6 +44,7 @@ import com.example.domain.model.ReminderTime
 import com.example.domain.model.TimeOfDay
 import com.example.domain.service.PolishDateFormatter
 import com.example.ui.theme.AppIcons
+import java.util.Locale
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -219,7 +226,20 @@ internal fun EventFormScheduleSection(
             }
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        var lastCustomRecurrence by remember {
+            mutableStateOf(
+                (recurrence as? EventRecurrence.Custom)
+                    ?: EventRecurrence.custom(
+                        interval = EventRecurrence.DEFAULT_CUSTOM_INTERVAL,
+                        unit = CustomRecurrenceUnit.DAYS,
+                    )
+            )
+        }
+        if (recurrence is EventRecurrence.Custom) {
+            lastCustomRecurrence = recurrence
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
                 text = stringResource(R.string.entry_recurrence_label),
                 style = MaterialTheme.typography.labelMedium,
@@ -229,21 +249,48 @@ internal fun EventFormScheduleSection(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                EventRecurrence.entries.forEach { option ->
+                EventRecurrence.standardOptions.forEach { option ->
                     FilterChip(
                         selected = recurrence == option,
                         onClick = { onRecurrenceChange(option) },
                         label = {
                             Text(
-                                text = stringResource(CalendarEntryVisuals.recurrenceLabelRes(option)),
+                                text = CalendarEntryVisuals.recurrenceLabel(option),
                                 style = MaterialTheme.typography.labelMedium,
                             )
                         },
                         modifier = Modifier
                             .minimumInteractiveComponentSize()
-                            .testTag("form_recurrence_${option.code.lowercase()}"),
+                            .testTag("form_recurrence_${option.code.lowercase(Locale.US)}"),
                     )
                 }
+                FilterChip(
+                    selected = recurrence is EventRecurrence.Custom,
+                    onClick = {
+                        if (recurrence !is EventRecurrence.Custom) {
+                            onRecurrenceChange(lastCustomRecurrence)
+                        }
+                    },
+                    label = {
+                        Text(
+                            text = stringResource(R.string.recurrence_custom),
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                    },
+                    modifier = Modifier
+                        .minimumInteractiveComponentSize()
+                        .testTag("form_recurrence_custom"),
+                )
+            }
+
+            AnimatedVisibility(visible = recurrence is EventRecurrence.Custom) {
+                CustomRecurrenceEditor(
+                    customRecurrence = (recurrence as? EventRecurrence.Custom) ?: lastCustomRecurrence,
+                    onChange = { updated ->
+                        lastCustomRecurrence = updated
+                        onRecurrenceChange(updated)
+                    },
+                )
             }
         }
 

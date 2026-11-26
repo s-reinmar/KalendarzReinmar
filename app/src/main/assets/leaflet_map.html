@@ -376,16 +376,25 @@
 
         var resizeTimer = null;
         var resizeObserver = null;
+        var lastWidth = 0;
+        var lastHeight = 0;
         function refreshSize() {
           if (disposed) return;
           if (resizeTimer) clearTimeout(resizeTimer);
           resizeTimer = setTimeout(function() {
             if (disposed || !hasValidSize()) return;
+            var el = document.getElementById('map');
+            if (!el) return;
+            var w = el.clientWidth;
+            var h = el.clientHeight;
+            if (w === lastWidth && h === lastHeight && !pendingFitAll) return;
+            lastWidth = w;
+            lastHeight = h;
             map.invalidateSize({ animate: false, pan: false });
             if (pendingFitAll) {
               fitAll();
             }
-          }, 120);
+          }, 150);
         }
         window.addEventListener('resize', refreshSize);
         if (typeof ResizeObserver !== 'undefined') {
@@ -400,7 +409,7 @@
             window.ReinmarMap.dispose();
           }
         });
-        setTimeout(refreshSize, 150);
+        setTimeout(refreshSize, 180);
 
         if (window.ReinmarMapBridge && typeof window.ReinmarMapBridge.onMapReady === 'function') {
           window.ReinmarMapBridge.onMapReady();

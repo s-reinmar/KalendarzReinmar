@@ -4,6 +4,7 @@ import com.example.domain.model.CalendarEntryType
 import com.example.domain.model.CalendarEvent
 import com.example.domain.model.CsvImportResult
 import com.example.domain.model.DateKey
+import com.example.domain.model.EventColorTag
 import com.example.domain.model.EventRecurrence
 import com.example.domain.model.EventTimeRange
 import com.example.domain.model.ImportedEvent
@@ -17,7 +18,7 @@ class CsvTransferCodec {
 
     fun exportEvents(events: List<CalendarEvent>): String {
         val sb = StringBuilder()
-        sb.append("date,end_date,entry_type,title,all_day,start_time,end_time,recurrence,description\r\n")
+        sb.append("date,end_date,entry_type,title,all_day,start_time,end_time,recurrence,color_tag,description\r\n")
         for (event in events) {
             sb.append(CsvRowParser.escapeField(event.dateKey.value))
             sb.append(',')
@@ -34,6 +35,8 @@ class CsvTransferCodec {
             sb.append(CsvRowParser.escapeField(event.timeRange?.end?.formatHHmm().orEmpty()))
             sb.append(',')
             sb.append(CsvRowParser.escapeField(event.recurrence.code))
+            sb.append(',')
+            sb.append(CsvRowParser.escapeField(event.colorTag.code))
             sb.append(',')
             sb.append(CsvRowParser.escapeField(event.description))
             sb.append("\r\n")
@@ -77,6 +80,7 @@ class CsvTransferCodec {
             startTimeIdx = firstRowNormalized.indexOfFirst { it in START_TIME_HEADERS },
             endTimeIdx = firstRowNormalized.indexOfFirst { it in END_TIME_HEADERS },
             recurrenceIdx = firstRowNormalized.indexOfFirst { it in RECURRENCE_HEADERS },
+            colorTagIdx = firstRowNormalized.indexOfFirst { it in COLOR_TAG_HEADERS },
             descriptionIdx = firstRowNormalized.indexOfFirst { it in DESCRIPTION_HEADERS },
         )
 
@@ -158,6 +162,10 @@ class CsvTransferCodec {
             null
         }
         val recurrence = EventRecurrence.fromCodeOrDefault(row.getOrNull(columns.recurrenceIdx))
+        val rawColorTag = row.getOrNull(columns.colorTagIdx)?.trim()
+        val colorTag = rawColorTag?.takeIf(String::isNotEmpty)?.let {
+            EventColorTag.fromCodeOrDefault(it, fallback = entryType.defaultColorTag)
+        }
         val description = row.getOrNull(columns.descriptionIdx)?.trim().orEmpty()
 
         return ImportedEvent(
@@ -169,6 +177,7 @@ class CsvTransferCodec {
             timeRange = timeRange,
             description = description,
             recurrence = recurrence,
+            colorTag = colorTag,
         )
     }
 
@@ -221,6 +230,7 @@ class CsvTransferCodec {
         val startTimeIdx: Int,
         val endTimeIdx: Int,
         val recurrenceIdx: Int,
+        val colorTagIdx: Int,
         val descriptionIdx: Int,
     ) {
         val hasHeader: Boolean
@@ -239,6 +249,7 @@ class CsvTransferCodec {
         val START_TIME_HEADERS = setOf("start_time", "start time", "godzina_od")
         val END_TIME_HEADERS = setOf("end_time", "end time", "godzina_do")
         val RECURRENCE_HEADERS = setOf("recurrence", "repeat", "powtarzanie")
+        val COLOR_TAG_HEADERS = setOf("color_tag", "color", "kolor")
         val DESCRIPTION_HEADERS = setOf("description", "opis")
         val EVENT_TYPES = setOf("event", "wydarzenie")
         val NOTE_TYPES = setOf("note", "notatka")

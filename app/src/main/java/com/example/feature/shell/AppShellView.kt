@@ -39,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -57,6 +58,9 @@ import com.example.feature.map.MapController
 import com.example.feature.notes.NotesController
 import com.example.feature.notes.NotesDialogHost
 import com.example.feature.notes.NotesScreen
+import com.example.feature.settings.SettingsController
+import com.example.feature.settings.SettingsFeedback
+import com.example.feature.settings.SettingsScreen
 import com.example.feature.transfer.TransferController
 import com.example.ui.theme.AppIcons
 import kotlinx.coroutines.launch
@@ -70,8 +74,10 @@ fun AppShellView(
     mapController: MapController,
     notesController: NotesController,
     transferController: TransferController,
+    settingsController: SettingsController,
 ) {
     val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     var isCreateMenuExpanded by remember { mutableStateOf(false) }
@@ -80,6 +86,7 @@ fun AppShellView(
     val calendarState by calendarController.uiState.collectAsStateWithLifecycle()
     val mapState by mapController.uiState.collectAsStateWithLifecycle()
     val notesState by notesController.uiState.collectAsStateWithLifecycle()
+    val settingsState by settingsController.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(shellState.activeTab) {
         isCreateMenuExpanded = false
@@ -98,6 +105,22 @@ fun AppShellView(
             snackbarHostState.showSnackbar(
                 TransferFeedbackFormatter.format(context, feedback),
             )
+        }
+    }
+
+    LaunchedEffect(settingsController) {
+        settingsController.feedback.collect { feedback ->
+            val message = when (feedback) {
+                is SettingsFeedback.PaletteSaved -> context.getString(
+                    R.string.settings_palette_saved_feedback,
+                    feedback.paletteName,
+                )
+                is SettingsFeedback.PaletteRestored -> context.getString(
+                    R.string.settings_palette_restored_feedback,
+                    feedback.paletteName,
+                )
+            }
+            snackbarHostState.showSnackbar(message)
         }
     }
 
@@ -183,6 +206,7 @@ fun AppShellView(
                                         AppTab.CALENDAR -> stringResource(R.string.nav_calendar)
                                         AppTab.MAP -> stringResource(R.string.nav_map)
                                         AppTab.NOTES -> stringResource(R.string.nav_notes)
+                                        AppTab.SETTINGS -> stringResource(R.string.nav_settings)
                                     },
                                     style = MaterialTheme.typography.headlineMedium,
                                 )
@@ -199,18 +223,19 @@ fun AppShellView(
                                         R.string.notes_summary_count,
                                         notesState.notes.size,
                                     )
+                                    AppTab.SETTINGS -> null
                                 }
-                                Text(
-                                    text = subtitle,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
+                                if (subtitle != null) {
+                                    Text(
+                                        text = subtitle,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f),
+                                    )
+                                }
                             }
                         },
                         actions = {
                             TopBarOverflowMenu(
-                                onLoadDemoData = transferController::loadDemoData,
-                                onClearDemoData = transferController::clearDemoData,
                                 onImportIcs = { importIcsLauncher.launch(arrayOf("*/*")) },
                                 onExportIcs = { exportIcsLauncher.launch("kalendarz_reinmar.ics") },
                                 onImportCsv = { importCsvLauncher.launch(arrayOf("*/*")) },
@@ -225,17 +250,33 @@ fun AppShellView(
                             )
                         },
                         colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.background,
-                            titleContentColor = MaterialTheme.colorScheme.onBackground,
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            actionIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                         ),
                         windowInsets = WindowInsets.statusBars,
                     )
                 },
                 bottomBar = {
-                    if (!useNavigationRail) {
-                        AppNavigationBar(
-                            activeTab = shellState.activeTab,
-                            onSelectTab = shellController::selectTab,
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        if (!useNavigationRail) {
+                            AppNavigationBar(
+                                activeTab = shellState.activeTab,
+                                onSelectTab = shellController::selectTab,
+                                windowInsets = WindowInsets(0, 0, 0, 0),
+                            )
+                        }
+                        AppCopyrightFooter(
+                            onOpenAuthorProfile = { url ->
+                                runCatching { uriHandler.openUri(url) }
+                                    .onFailure {
+                                        coroutineScope.launch {
+                                            snackbarHostState.showSnackbar(
+                                                context.getString(R.string.footer_open_link_error),
+                                            )
+                                        }
+                                    }
+                            },
                         )
                     }
                 },
@@ -265,6 +306,7 @@ fun AppShellView(
                                 )
                             }
                         }
+                        AppTab.SETTINGS -> Unit
                     }
                 },
             ) { innerPadding ->
@@ -295,7 +337,6 @@ fun AppShellView(
                                     onReminderClick = calendarController::openReminderEditor,
                                     onEditClick = calendarController::openEditEvent,
                                     onDeleteClick = calendarController::requestDeleteEvent,
-                                    onLoadDemoData = transferController::loadDemoData,
                                 )
                             }
                             AppTab.MAP -> {
@@ -320,14 +361,34 @@ fun AppShellView(
                                     onEditClick = notesController::openEditNote,
                                     onDeleteClick = notesController::requestDeleteNote,
                                     onOpenAttachedEvent = calendarController::openEventDetails,
-                                    onLoadDemoData = transferController::loadDemoData,
+                                )
+                            }
+                            AppTab.SETTINGS -> {
+                                SettingsScreen(
+                                    uiState = settingsState,
+                                    onToggleColorWheelExpanded = settingsController::toggleColorWheelExpanded,
+                                    onToggleApplyToAppTheme = settingsController::setApplyToAppTheme,
+                                    onSelectSurfaceMode = settingsController::selectSurfaceMode,
+                                    onSelectColorCount = settingsController::selectColorCount,
+                                    onResetToDefaultPalette = settingsController::resetToDefaultPalette,
+                                    onSelectHarmonyRule = settingsController::selectHarmonyRule,
+                                    onSwatchDragged = settingsController::updateSwatchOnWheel,
+                                    onSelectSwatch = settingsController::selectSwatch,
+                                    onActiveSwatchValueChange = settingsController::updateActiveSwatchValue,
+                                    onCommitContinuousAdjustment = settingsController::commitContinuousAdjustment,
+                                    onOpenSavePaletteDialog = settingsController::openSavePaletteDialog,
+                                    onDismissSavePaletteDialog = settingsController::dismissSavePaletteDialog,
+                                    onConfirmSavePalette = settingsController::saveNamedPalette,
+                                    onRestoreSavedPalette = settingsController::restoreSavedPalette,
+                                    onDeleteSavedPalette = settingsController::deleteSavedPalette,
                                 )
                             }
                         }
                     }
 
                     CreateEntrySpeedDialScrim(
-                        expanded = isCreateMenuExpanded && shellState.activeTab != AppTab.NOTES,
+                        expanded = isCreateMenuExpanded &&
+                            (shellState.activeTab == AppTab.CALENDAR || shellState.activeTab == AppTab.MAP),
                         onDismiss = { isCreateMenuExpanded = false },
                     )
                 }
